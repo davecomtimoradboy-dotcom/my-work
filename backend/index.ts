@@ -5,6 +5,7 @@ const tables = {
   course: 'study_courses',
   assignment: 'study_assignments',
   exam: 'study_exams',
+  submission: 'study_submissions',
 };
 
 export const handler = router({
