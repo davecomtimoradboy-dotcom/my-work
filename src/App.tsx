@@ -33,6 +33,64 @@ function App() {
   const [showForm, setShowForm] = useState(false);
   const [formType, setFormType] = useState('assignment');
   const [error, setError] = useState('');
+  const [tutorialStep, setTutorialStep] = useState<number | null>(null);
+
+  const tutorial = [
+    {
+      title: 'Welcome to StudyFlow',
+      text: 'Let’s take a quick animated tour so you know where everything is.',
+      page: 'dashboard',
+      icon: GraduationCap,
+    },
+    {
+      title: 'Programs',
+      text: 'Create your degree or study program here, such as Software Engineering.',
+      page: 'programs',
+      icon: GraduationCap,
+    },
+    {
+      title: 'Courses',
+      text: 'Add the courses inside your program and track each course progress.',
+      page: 'courses',
+      icon: BookOpen,
+    },
+    {
+      title: 'Assignments',
+      text: 'Create assignments, choose their course, set a due date, and tick them off when finished.',
+      page: 'assignments',
+      icon: ClipboardList,
+    },
+    {
+      title: 'Exams',
+      text: 'Keep your upcoming exams organized by course and date.',
+      page: 'exams',
+      icon: CalendarDays,
+    },
+    {
+      title: 'Progress',
+      text: 'See how far you have progressed in each course.',
+      page: 'progress',
+      icon: Target,
+    },
+    {
+      title: 'You are ready!',
+      text: 'That’s the complete StudyFlow tour. Stay organized and keep making progress.',
+      page: 'dashboard',
+      icon: CheckCircle2,
+    },
+  ];
+
+  function finishTutorial() {
+    setTutorialStep(null);
+    try {
+      localStorage.setItem('studyflow_tutorial_seen', 'true');
+    } catch {}
+  }
+
+  function startTutorial() {
+    setActive('dashboard');
+    setTutorialStep(0);
+  }
 
   async function load() {
     const result = await api.get('/api/study');
@@ -44,6 +102,13 @@ function App() {
 
   useEffect(() => {
     load().catch(() => setError('Unable to load your study data.'));
+    try {
+      if (localStorage.getItem('studyflow_tutorial_seen') !== 'true') {
+        setTutorialStep(0);
+      }
+    } catch {
+      setTutorialStep(0);
+    }
   }, []);
 
   const completed = assignments.filter(a => a.completed).length;
@@ -166,12 +231,20 @@ function App() {
                 {nav.find(n => n.id === active)?.label}
               </h2>
             </div>
-            <button
-              onClick={() => openForm(addType)}
-              className="flex items-center gap-2 rounded-xl bg-indigo-500 px-4 py-2 font-semibold hover:bg-indigo-400"
-            >
-              <Plus size={18} /> Add
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={startTutorial}
+                className="hidden rounded-xl border border-slate-700 px-3 py-2 text-sm font-semibold text-slate-300 hover:bg-slate-800 sm:block"
+              >
+                Tutorial
+              </button>
+              <button
+                onClick={() => openForm(addType)}
+                className="flex items-center gap-2 rounded-xl bg-indigo-500 px-4 py-2 font-semibold hover:bg-indigo-400"
+              >
+                <Plus size={18} /> Add
+              </button>
+            </div>
           </div>
         </header>
 
@@ -312,6 +385,89 @@ function App() {
           )}
         </div>
       </main>
+
+      {tutorialStep !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-lg overflow-hidden rounded-3xl border border-slate-700 bg-slate-900 shadow-2xl">
+            <div className="relative flex h-36 items-center justify-center bg-gradient-to-br from-indigo-500/20 to-slate-900">
+              <div className="absolute h-24 w-24 animate-ping rounded-full bg-indigo-500/10" />
+              <div className="relative flex h-20 w-20 animate-bounce items-center justify-center rounded-2xl bg-indigo-500 text-white shadow-lg">
+                {(() => {
+                  const Icon = tutorial[tutorialStep].icon;
+                  return <Icon size={38} />;
+                })()}
+              </div>
+            </div>
+
+            <div className="p-6">
+              <div className="mb-4 flex items-center justify-between">
+                <span className="text-sm font-semibold text-indigo-400">
+                  Step {tutorialStep + 1} of {tutorial.length}
+                </span>
+                <button
+                  type="button"
+                  onClick={finishTutorial}
+                  className="text-sm text-slate-400 hover:text-white"
+                >
+                  Skip tutorial
+                </button>
+              </div>
+
+              <div key={tutorialStep} className="animate-pulse">
+                <h3 className="text-2xl font-bold">{tutorial[tutorialStep].title}</h3>
+                <p className="mt-3 leading-6 text-slate-400">{tutorial[tutorialStep].text}</p>
+              </div>
+
+              <div className="mt-6 flex gap-1.5">
+                {tutorial.map((_, index) => (
+                  <div
+                    key={index}
+                    className={`h-1.5 flex-1 rounded-full ${index <= tutorialStep ? 'bg-indigo-500' : 'bg-slate-700'}`}
+                  />
+                ))}
+              </div>
+
+              <div className="mt-6 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (tutorialStep === 0) return;
+                    const next = tutorialStep - 1;
+                    setTutorialStep(next);
+                    setActive(tutorial[next].page);
+                  }}
+                  disabled={tutorialStep === 0}
+                  className="rounded-xl px-4 py-2 font-semibold text-slate-400 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-30"
+                >
+                  Back
+                </button>
+
+                {tutorialStep === tutorial.length - 1 ? (
+                  <button
+                    type="button"
+                    onClick={finishTutorial}
+                    className="rounded-xl bg-indigo-500 px-6 py-3 font-semibold text-white hover:bg-indigo-400"
+                  >
+                    Finish
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = tutorialStep + 1;
+                      setTutorialStep(next);
+                      setActive(tutorial[next].page);
+                    }}
+                    className="rounded-xl bg-indigo-500 px-6 py-3 font-semibold text-white hover:bg-indigo-400"
+                  >
+                    Next
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showForm && (
         <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/70 p-4">
