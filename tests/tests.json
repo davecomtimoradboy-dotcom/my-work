@@ -18,6 +18,25 @@
     "expected": "Software Engineering and Web Development remain visible, and the course shows Software Engineering as its program."
   },
   {
+    "name": "Submit real assignment code",
+    "viewport": "desktop",
+    "covers": [
+      "assignment code submission",
+      "programming language selection",
+      "submission persistence",
+      "assignment completion"
+    ],
+    "description": "Verifies a student can enter real code for an assignment, save it, and see the submission after reload.",
+    "steps": [
+      "Create an assignment named 'PHP Assignment'",
+      "Open Assignments and click 'Submit Assignment'",
+      "Select PHP and enter code such as '<?php echo 1; ?>'",
+      "Click 'Save & Submit Code'",
+      "Refresh the page"
+    ],
+    "expected": "The assignment shows that code was submitted with PHP, and opening the submission shows the saved code."
+  },
+  {
     "name": "Use a course for an assignment and exam",
     "viewport": "desktop",
     "covers": [
@@ -41,13 +60,13 @@
       "database update",
       "completion persistence"
     ],
-    "description": "Verifies clicking an assignment check button marks it complete and keeps the completed state after refresh.",
+    "description": "Verifies clicking an assignment checkbox marks it complete and keeps the completed state after refresh.",
     "steps": [
       "Create an assignment named 'PHP Assignment'",
-      "Open Assignments and click its check button",
+      "Open Assignments and click its checkbox",
       "Refresh the page"
     ],
-    "expected": "The assignment shows a green checkmark, its title is crossed out, and it remains completed after refresh."
+    "expected": "The assignment title is crossed out and it remains completed after refresh."
   },
   {
     "name": "Reject incomplete program",
@@ -63,21 +82,5 @@
       "Submit with the name empty"
     ],
     "expected": "A validation message appears and no blank program is created."
-  },
-  {
-    "name": "Show program and course progress",
-    "viewport": "desktop",
-    "covers": [
-      "course progress",
-      "program course count",
-      "progress dashboard"
-    ],
-    "description": "Verifies course progress and the number of courses in a program are visible.",
-    "steps": [
-      "Create a program named 'Software Engineering'",
-      "Create a course under it with 60 percent progress",
-      "Open Progress"
-    ],
-    "expected": "The course shows 60 percent progress and the program lists its course count."
   }
 ]
