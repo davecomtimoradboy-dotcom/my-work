@@ -34,6 +34,7 @@ function App() {
   const [formType, setFormType] = useState('assignment');
   const [error, setError] = useState('');
   const [tutorialStep, setTutorialStep] = useState<number | null>(null);
+  const [sectionTutorial, setSectionTutorial] = useState<string | null>(null);
 
   const tutorial = [
     {
@@ -88,8 +89,53 @@ function App() {
   }
 
   function startTutorial() {
+    setSectionTutorial(null);
     setActive('dashboard');
     setTutorialStep(0);
+  }
+
+  const sectionGuides: Record<string, { title: string; text: string; icon: any; steps: string[] }> = {
+    dashboard: {
+      title: 'Dashboard Tutorial',
+      text: 'Your dashboard gives you a quick overview of your study activity.',
+      icon: LayoutDashboard,
+      steps: ['Check your number of programs and courses.', 'See total assignments and completed assignments.', 'Use the Progress card to see your overall course progress.', 'Check Upcoming assignments for work that needs your attention.'],
+    },
+    programs: {
+      title: 'Programs Tutorial',
+      text: 'Programs are the main study programs or degrees you are taking.',
+      icon: GraduationCap,
+      steps: ['Click Add to create a program.', 'Enter a name such as Software Engineering.', 'Save the program.', 'Your program will show how many courses belong to it.'],
+    },
+    courses: {
+      title: 'Courses Tutorial',
+      text: 'Courses belong to your programs and are where you track your learning progress.',
+      icon: BookOpen,
+      steps: ['Click Add to create a course.', 'Enter the course name.', 'Select the program the course belongs to.', 'Enter your current progress percentage.'],
+    },
+    assignments: {
+      title: 'Assignments Tutorial',
+      text: 'Use Assignments to keep track of school work and deadlines.',
+      icon: ClipboardList,
+      steps: ['Click Add and enter the assignment title.', 'Choose the course it belongs to.', 'Set the due date.', 'Click the checkbox when you finish the assignment.'],
+    },
+    exams: {
+      title: 'Exams Tutorial',
+      text: 'Use Exams to organize your upcoming tests and examinations.',
+      icon: CalendarDays,
+      steps: ['Click Add to create an exam.', 'Enter the exam title.', 'Select the course.', 'Set the exam date.'],
+    },
+    progress: {
+      title: 'Progress Tutorial',
+      text: 'Progress shows how far you have moved through each course.',
+      icon: Target,
+      steps: ['Open Progress after adding courses.', 'Each course shows its program.', 'The percentage shows your current progress.', 'Update course progress from the Courses section when it changes.'],
+    },
+  };
+
+  function openSectionTutorial(page: string) {
+    setTutorialStep(null);
+    setSectionTutorial(page);
   }
 
   async function load() {
@@ -211,7 +257,18 @@ function App() {
             return (
               <button
                 key={n.id}
-                onClick={() => setActive(n.id)}
+                onClick={() => {
+                  setActive(n.id);
+                  try {
+                    const seen = localStorage.getItem('studyflow_section_' + n.id);
+                    if (seen !== 'true') {
+                      openSectionTutorial(n.id);
+                      localStorage.setItem('studyflow_section_' + n.id, 'true');
+                    }
+                  } catch {
+                    openSectionTutorial(n.id);
+                  }
+                }}
                 className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left ${active === n.id ? 'bg-indigo-500 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
               >
                 <Icon size={18} />
@@ -233,10 +290,16 @@ function App() {
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={startTutorial}
-                className="hidden rounded-xl border border-slate-700 px-3 py-2 text-sm font-semibold text-slate-300 hover:bg-slate-800 sm:block"
+                onClick={() => openSectionTutorial(active)}
+                className="rounded-xl border border-slate-700 px-3 py-2 text-sm font-semibold text-slate-300 hover:bg-slate-800"
               >
-                Tutorial
+                How to use
+              </button>
+              <button
+                onClick={startTutorial}
+                className="hidden rounded-xl border border-slate-700 px-3 py-2 text-sm font-semibold text-slate-300 hover:bg-slate-800 lg:block"
+              >
+                Full Tutorial
               </button>
               <button
                 onClick={() => openForm(addType)}
@@ -464,6 +527,45 @@ function App() {
                   </button>
                 )}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {sectionTutorial && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-lg overflow-hidden rounded-3xl border border-slate-700 bg-slate-900 shadow-2xl">
+            <div className="flex items-center gap-4 bg-indigo-500/10 p-6">
+              <div className="flex h-16 w-16 shrink-0 animate-pulse items-center justify-center rounded-2xl bg-indigo-500 text-white">
+                {(() => {
+                  const Icon = sectionGuides[sectionTutorial].icon;
+                  return <Icon size={30} />;
+                })()}
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-indigo-400">Quick Tutorial</p>
+                <h3 className="text-xl font-bold">{sectionGuides[sectionTutorial].title}</h3>
+              </div>
+            </div>
+            <div className="p-6">
+              <p className="text-slate-400">{sectionGuides[sectionTutorial].text}</p>
+              <div className="mt-5 space-y-3">
+                {sectionGuides[sectionTutorial].steps.map((step, index) => (
+                  <div key={step} className="flex gap-3 rounded-xl bg-slate-800/60 p-3">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo-500 text-sm font-bold">
+                      {index + 1}
+                    </span>
+                    <p className="text-sm text-slate-300">{step}</p>
+                  </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => setSectionTutorial(null)}
+                className="mt-6 w-full rounded-xl bg-indigo-500 py-3 font-semibold text-white hover:bg-indigo-400"
+              >
+                Got it
+              </button>
             </div>
           </div>
         </div>
