@@ -90,7 +90,7 @@ function App() {
   }
 
   async function toggleAssignment(item: Item) {
-    const completed = !Boolean(item.completed);
+    const completed = item.completed !== true;
     setAssignments(current =>
       current.map(a => (a.id === item.id ? { ...a, completed } : a))
     );
@@ -259,16 +259,13 @@ function App() {
               <div className="space-y-3">
                 {assignments.length ? assignments.map(a => (
                   <div key={a.id} className="flex items-center gap-3 rounded-xl bg-slate-800/60 p-4">
-                    <button
-                      type="button"
-                      onClick={() => toggleAssignment(a)}
-                      aria-label={a.completed ? 'Mark assignment incomplete' : 'Mark assignment complete'}
-                      className="rounded-full p-1 hover:bg-slate-700"
-                    >
-                      <CheckCircle2
-                        className={a.completed ? 'text-emerald-400' : 'text-slate-600'}
-                      />
-                    </button>
+                    <input
+                      type="checkbox"
+                      checked={a.completed === true}
+                      onChange={() => toggleAssignment(a)}
+                      aria-label={a.completed === true ? 'Mark assignment incomplete' : 'Mark assignment complete'}
+                      className="h-6 w-6 cursor-pointer accent-indigo-500"
+                    />
                     <div className="flex-1">
                       <p className={a.completed ? 'text-slate-500 line-through' : 'font-medium'}>{a.title}</p>
                       <p className="text-xs text-slate-400">
