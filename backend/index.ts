@@ -40,8 +40,13 @@ export const handler = router({
       const input = body as { type?: string; data?: Record<string, unknown> };
       if (!input.type || !tables[input.type as keyof typeof tables] || !input.data)
         return error('Invalid study item', 400);
+      const [existing] = await db.get(tables[input.type as keyof typeof tables], [params.id]);
+      if (!existing) return error('Item not found', 404);
+
+      const { id: _id, ...changes } = input.data;
+      const record = { ...existing, ...changes };
       const [ok] = await db.update(tables[input.type as keyof typeof tables], [
-        { id: params.id, record: input.data },
+        { id: params.id, record },
       ]);
       return ok ? json({ ok: true }) : error('Could not update item', 500);
     },
