@@ -34,6 +34,22 @@
     "expected": "Both the assignment and exam show PHP as their course."
   },
   {
+    "name": "Mark an assignment complete",
+    "viewport": "desktop",
+    "covers": [
+      "assignment completion",
+      "database update",
+      "completion persistence"
+    ],
+    "description": "Verifies clicking an assignment check button marks it complete and keeps the completed state after refresh.",
+    "steps": [
+      "Create an assignment named 'PHP Assignment'",
+      "Open Assignments and click its check button",
+      "Refresh the page"
+    ],
+    "expected": "The assignment shows a green checkmark, its title is crossed out, and it remains completed after refresh."
+  },
+  {
     "name": "Reject incomplete program",
     "viewport": "mobile",
     "covers": [
