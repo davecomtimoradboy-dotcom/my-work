@@ -88,6 +88,32 @@ function App() {
     }
   }
 
+  async function submitAssignment(a: Item) {
+    const code = prompt('Paste your assignment code here:');
+    if (code === null || !code.trim()) return;
+    try {
+      await api.post('/api/study', {
+        type: 'submission',
+        data: {
+          assignmentId: a.id,
+          assignmentTitle: a.title,
+          courseId: a.courseId,
+          courseName: courses.find(c => c.id === a.courseId)?.name || '',
+          studentId: user.id,
+          studentName: user.name,
+          teacherId: a.teacherId || '',
+          code,
+          submittedAt: new Date().toISOString(),
+          status: 'Submitted',
+        },
+      });
+      alert('Assignment submitted successfully.');
+      await load();
+    } catch {
+      setError('Could not submit the assignment.');
+    }
+  }
+
   async function updateItem(item: Item, type: string, changes: Item) {
     try {
       await api.put('/api/study/' + item.id, { type, data: { ...item, ...changes } });
@@ -187,7 +213,7 @@ function App() {
           {active==='programs' && <List title="Programs" items={programs} extra={p=>`${courses.filter(c=>c.programId===p.id).length} courses`} onDelete={x=>remove(x,'program')}/>}
           {active==='courses' && <List title="Courses" items={user.role==='student'?studentCourses:courses} extra={c=>programs.find(p=>p.id===c.programId)?.name || 'No program'} onDelete={x=>remove(x,'course')}/>}
 
-          {active==='assignments' && <List title={user.role==='student'?'Your assignments':'Assignments you teach'} items={user.role==='student'?studentAssignments:teacherAssignments} extra={a=>`${courses.find(c=>c.id===a.courseId)?.name || 'Course'} · Due ${a.dueDate || 'No date'}`} onDelete={user.role==='teacher'?x=>remove(x,'assignment'):undefined}/>}
+          {active==='assignments' && <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5"><h3 className="mb-4 font-bold">{user.role==='student'?'Your assignments':'Assignments you teach'}</h3><div className="space-y-3">{(user.role==='student'?studentAssignments:teacherAssignments).map(a=><div key={a.id} className="flex items-center justify-between rounded-xl bg-slate-800/60 p-4"><div><p className="font-medium">{a.title}</p><p className="text-xs text-slate-400">{courses.find(c=>c.id===a.courseId)?.name || 'Course'} · Due {a.dueDate || 'No date'}</p></div>{user.role==='student'?<button onClick={()=>submitAssignment(a)} className="rounded-xl bg-indigo-500 px-4 py-2 text-sm font-semibold">Submit Code</button>:<button onClick={()=>remove(a,'assignment')} className="text-sm text-red-300">Delete</button>}</div>)}</div></div>}
 
           {active==='submissions' && user.role==='teacher' && <div className="space-y-3">{submissions.filter(s=>s.teacherId===user.id || !s.teacherId).map(s=><div key={s.id} className="rounded-2xl border border-slate-800 bg-slate-900 p-5"><div className="flex justify-between"><div><h3 className="font-bold">{s.studentName || 'Student'}</h3><p className="text-sm text-slate-400">{s.assignmentTitle || 'Assignment'} · {s.courseName || ''}</p></div><span className="text-indigo-300">{s.grade != null ? `${s.grade}%` : 'Pending'}</span></div><pre className="mt-4 max-h-48 overflow-auto rounded-xl bg-slate-950 p-4 text-xs text-slate-300">{s.code || s.content || 'No code submitted.'}</pre><button onClick={()=>updateItem(s,'submission',{grade:Number(prompt('Enter grade (0-100)',String(s.grade||''))||0),feedback:prompt('Feedback',s.feedback||'')||''})} className="mt-4 rounded-xl bg-indigo-500 px-4 py-2 text-sm font-semibold">Assess</button></div>)}</div>}
 
