@@ -1,6 +1,67 @@
 [
-  {"name":"Add and complete an assignment","sanity":true,"viewport":"desktop","covers":["assignment create","assignment completion","database persistence"],"description":"Verifies a student can add an assignment, mark it complete, and retain the result after refresh.","steps":["Open the assignment form","Add an assignment named 'PHP Exam' with a future deadline","Mark 'PHP Exam' complete and refresh the page"],"expected":"'PHP Exam' remains visible with a completed status after refresh."},
-  {"name":"Add an exam and update grade progress","viewport":"desktop","covers":["exam tracking","grade progress","dashboard statistics"],"description":"Verifies exam planning and grade progress are reflected in the dashboard.","steps":["Open the exams area","Add an exam named 'Maths' with a date and target score of 80","Open the progress view"],"expected":"The Maths exam is listed and the progress view reflects the saved study record."},
-  {"name":"Reject an incomplete assignment","viewport":"mobile","covers":["assignment validation","mobile form behavior"],"description":"Verifies required assignment information is validated before saving.","steps":["Open the assignment form","Leave the assignment title empty","Submit the form"],"expected":"A validation message appears and no blank assignment is created."},
-  {"name":"Manage a course and its study progress","viewport":"desktop","covers":["course create","course progress","database update"],"description":"Verifies a course can be created and its progress updated.","steps":["Add a course named 'Web Development'","Set its progress to 60 percent","Refresh the page"],"expected":"Web Development remains listed with 60 percent progress."}
+  {
+    "name": "Create a program and course",
+    "sanity": true,
+    "viewport": "desktop",
+    "covers": [
+      "program create",
+      "course create",
+      "program-course relationship",
+      "database persistence"
+    ],
+    "description": "Verifies a student can create a program and add a course under that program.",
+    "steps": [
+      "Open Programs and add 'Software Engineering'",
+      "Open Courses and add 'Web Development' under 'Software Engineering'",
+      "Refresh the page"
+    ],
+    "expected": "Software Engineering and Web Development remain visible, and the course shows Software Engineering as its program."
+  },
+  {
+    "name": "Use a course for an assignment and exam",
+    "viewport": "desktop",
+    "covers": [
+      "assignment course selection",
+      "exam course selection",
+      "database persistence"
+    ],
+    "description": "Verifies assignments and exams can be linked to an existing course.",
+    "steps": [
+      "Add a course named 'PHP'",
+      "Add an assignment named 'PHP Assignment' and select PHP",
+      "Add an exam named 'PHP Exam' and select PHP"
+    ],
+    "expected": "Both the assignment and exam show PHP as their course."
+  },
+  {
+    "name": "Reject incomplete program",
+    "viewport": "mobile",
+    "covers": [
+      "program validation",
+      "mobile form behavior"
+    ],
+    "description": "Verifies a program cannot be saved without a name.",
+    "steps": [
+      "Open Programs",
+      "Open the Add program form",
+      "Submit with the name empty"
+    ],
+    "expected": "A validation message appears and no blank program is created."
+  },
+  {
+    "name": "Show program and course progress",
+    "viewport": "desktop",
+    "covers": [
+      "course progress",
+      "program course count",
+      "progress dashboard"
+    ],
+    "description": "Verifies course progress and the number of courses in a program are visible.",
+    "steps": [
+      "Create a program named 'Software Engineering'",
+      "Create a course under it with 60 percent progress",
+      "Open Progress"
+    ],
+    "expected": "The course shows 60 percent progress and the program lists its course count."
+  }
 ]
