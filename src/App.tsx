@@ -1,142 +1,34 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '@appdeploy/client';
-import {
-  BookOpen,
-  CalendarDays,
-  CheckCircle2,
-  ClipboardList,
-  GraduationCap,
-  LayoutDashboard,
-  Plus,
-  Target,
-  Trash2,
-  X,
-} from 'lucide-react';
+import { BookOpen, CalendarDays, CheckCircle2, ClipboardList, GraduationCap, LayoutDashboard, LogOut, Plus, ShieldCheck, Users, X } from 'lucide-react';
 
 type Item = { id: string; [key: string]: any };
+type Role = 'student' | 'teacher' | 'admin';
 
-const nav = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'programs', label: 'Programs', icon: GraduationCap },
-  { id: 'courses', label: 'Courses', icon: BookOpen },
-  { id: 'assignments', label: 'Assignments', icon: ClipboardList },
-  { id: 'exams', label: 'Exams', icon: CalendarDays },
-  { id: 'progress', label: 'Progress', icon: Target },
+const roleCards = [
+  { role: 'student' as Role, title: 'Student Login', text: 'Access courses, assignments, grades and attendance.', icon: GraduationCap },
+  { role: 'teacher' as Role, title: 'Teacher Login', text: 'Manage assignments, submissions, grades and attendance.', icon: BookOpen },
+  { role: 'admin' as Role, title: 'Admin Login', text: 'Control student and teacher accounts, programs and courses.', icon: ShieldCheck },
 ];
 
 function App() {
+  const [user, setUser] = useState<Item | null>(() => {
+    try { return JSON.parse(localStorage.getItem('studyflow_user') || 'null'); } catch { return null; }
+  });
+  const [loginRole, setLoginRole] = useState<Role | null>(null);
+  const [loginError, setLoginError] = useState('');
   const [active, setActive] = useState('dashboard');
   const [programs, setPrograms] = useState<Item[]>([]);
   const [courses, setCourses] = useState<Item[]>([]);
   const [assignments, setAssignments] = useState<Item[]>([]);
   const [exams, setExams] = useState<Item[]>([]);
+  const [submissions, setSubmissions] = useState<Item[]>([]);
+  const [users, setUsers] = useState<Item[]>([]);
+  const [attendance, setAttendance] = useState<Item[]>([]);
+  const [excuses, setExcuses] = useState<Item[]>([]);
   const [showForm, setShowForm] = useState(false);
-  const [formType, setFormType] = useState('assignment');
+  const [formType, setFormType] = useState('');
   const [error, setError] = useState('');
-  const [tutorialStep, setTutorialStep] = useState<number | null>(null);
-  const [sectionTutorial, setSectionTutorial] = useState<string | null>(null);
-
-  const tutorial = [
-    {
-      title: 'Welcome to StudyFlow',
-      text: 'Let’s take a quick animated tour so you know where everything is.',
-      page: 'dashboard',
-      icon: GraduationCap,
-    },
-    {
-      title: 'Programs',
-      text: 'Create your degree or study program here, such as Software Engineering.',
-      page: 'programs',
-      icon: GraduationCap,
-    },
-    {
-      title: 'Courses',
-      text: 'Add the courses inside your program and track each course progress.',
-      page: 'courses',
-      icon: BookOpen,
-    },
-    {
-      title: 'Assignments',
-      text: 'Create assignments, choose their course, set a due date, and tick them off when finished.',
-      page: 'assignments',
-      icon: ClipboardList,
-    },
-    {
-      title: 'Exams',
-      text: 'Keep your upcoming exams organized by course and date.',
-      page: 'exams',
-      icon: CalendarDays,
-    },
-    {
-      title: 'Progress',
-      text: 'See how far you have progressed in each course.',
-      page: 'progress',
-      icon: Target,
-    },
-    {
-      title: 'You are ready!',
-      text: 'That’s the complete StudyFlow tour. Stay organized and keep making progress.',
-      page: 'dashboard',
-      icon: CheckCircle2,
-    },
-  ];
-
-  function finishTutorial() {
-    setTutorialStep(null);
-    try {
-      localStorage.setItem('studyflow_tutorial_seen', 'true');
-    } catch {}
-  }
-
-  function startTutorial() {
-    setSectionTutorial(null);
-    setActive('dashboard');
-    setTutorialStep(0);
-  }
-
-  const sectionGuides: Record<string, { title: string; text: string; icon: any; steps: string[] }> = {
-    dashboard: {
-      title: 'Dashboard Tutorial',
-      text: 'Your dashboard gives you a quick overview of your study activity.',
-      icon: LayoutDashboard,
-      steps: ['Check your number of programs and courses.', 'See total assignments and completed assignments.', 'Use the Progress card to see your overall course progress.', 'Check Upcoming assignments for work that needs your attention.'],
-    },
-    programs: {
-      title: 'Programs Tutorial',
-      text: 'Programs are the main study programs or degrees you are taking.',
-      icon: GraduationCap,
-      steps: ['Click Add to create a program.', 'Enter a name such as Software Engineering.', 'Save the program.', 'Your program will show how many courses belong to it.'],
-    },
-    courses: {
-      title: 'Courses Tutorial',
-      text: 'Courses belong to your programs and are where you track your learning progress.',
-      icon: BookOpen,
-      steps: ['Click Add to create a course.', 'Enter the course name.', 'Select the program the course belongs to.', 'Enter your current progress percentage.'],
-    },
-    assignments: {
-      title: 'Assignments Tutorial',
-      text: 'Use Assignments to keep track of school work and deadlines.',
-      icon: ClipboardList,
-      steps: ['Click Add and enter the assignment title.', 'Choose the course it belongs to.', 'Set the due date.', 'Click the checkbox when you finish the assignment.'],
-    },
-    exams: {
-      title: 'Exams Tutorial',
-      text: 'Use Exams to organize your upcoming tests and examinations.',
-      icon: CalendarDays,
-      steps: ['Click Add to create an exam.', 'Enter the exam title.', 'Select the course.', 'Set the exam date.'],
-    },
-    progress: {
-      title: 'Progress Tutorial',
-      text: 'Progress shows how far you have moved through each course.',
-      icon: Target,
-      steps: ['Open Progress after adding courses.', 'Each course shows its program.', 'The percentage shows your current progress.', 'Update course progress from the Courses section when it changes.'],
-    },
-  };
-
-  function openSectionTutorial(page: string) {
-    setTutorialStep(null);
-    setSectionTutorial(page);
-  }
 
   async function load() {
     const result = await api.get('/api/study');
@@ -144,531 +36,198 @@ function App() {
     setCourses(result.data.courses || []);
     setAssignments(result.data.assignments || []);
     setExams(result.data.exams || []);
+    setSubmissions(result.data.submissions || []);
+    setUsers(result.data.users || []);
+    setAttendance(result.data.attendance || []);
+    setExcuses(result.data.excuses || []);
   }
 
   useEffect(() => {
-    load().catch(() => setError('Unable to load your study data.'));
+    if (user) load().catch(() => setError('Unable to load StudyFlow data.'));
+  }, [user]);
+
+  async function login(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setLoginError('');
+    const data = Object.fromEntries(new FormData(e.currentTarget).entries());
     try {
-      if (localStorage.getItem('studyflow_tutorial_seen') !== 'true') {
-        setTutorialStep(0);
-      }
-    } catch {
-      setTutorialStep(0);
+      const result = await api.post('/api/auth/login', { email: data.email, password: data.password, role: loginRole });
+      setUser(result.data.user);
+      localStorage.setItem('studyflow_user', JSON.stringify(result.data.user));
+      setLoginRole(null);
+      setActive('dashboard');
+    } catch (err: any) {
+      setLoginError(err?.message || 'Invalid email, password or account type.');
     }
-  }, []);
-
-  const completed = assignments.filter(a => a.completed).length;
-  const progress = courses.length
-    ? Math.round(
-        courses.reduce((sum, c) => sum + Number(c.progress || 0), 0) /
-          courses.length
-      )
-    : 0;
-  const upcoming = assignments.filter(a => !a.completed).slice(0, 4);
-
-  const courseOptions = useMemo(
-    () => courses.map(c => ({ id: c.id, name: c.name, programId: c.programId })),
-    [courses]
-  );
-
-  function programName(id: string) {
-    return programs.find(p => p.id === id)?.name || 'No program';
   }
 
-  function courseName(id: string, fallback?: string) {
-    return courses.find(c => c.id === id)?.name || fallback || 'General';
+  function logout() {
+    localStorage.removeItem('studyflow_user');
+    setUser(null);
+    setLoginRole(null);
   }
 
   async function save(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError('');
     const data = Object.fromEntries(new FormData(e.currentTarget).entries());
-
-    if (formType === 'program' && !data.name)
-      return setError('Please enter a program name.');
-    if (formType === 'course' && !data.name)
-      return setError('Please enter a course name.');
-    if ((formType === 'assignment' || formType === 'exam') && !data.title)
-      return setError('Please enter a title.');
-
     try {
-      await api.post('/api/study', { type: formType, data });
+      if (formType === 'user') {
+        await api.post('/api/admin/users', {
+          ...data,
+          role: data.role,
+          courseIds: data.courseIds ? String(data.courseIds).split(',').map(x => x.trim()).filter(Boolean) : [],
+        });
+      } else {
+        await api.post('/api/study', { type: formType, data });
+      }
       setShowForm(false);
       await load();
-    } catch {
-      setError('Could not save this item. Please try again.');
+    } catch (err: any) {
+      setError(err?.message || 'Could not save this item.');
     }
   }
 
-  async function toggleAssignment(item: Item) {
-    const completed = item.completed !== true;
-    setAssignments(current =>
-      current.map(a => (a.id === item.id ? { ...a, completed } : a))
-    );
-    setError('');
-
+  async function updateItem(item: Item, type: string, changes: Item) {
     try {
-      await api.put('/api/study/' + item.id, {
-        type: 'assignment',
-        data: { ...item, completed },
-      });
+      await api.put('/api/study/' + item.id, { type, data: { ...item, ...changes } });
       await load();
-    } catch {
-      setError('Could not update the assignment. Please try again.');
-      await load();
-    }
+    } catch { setError('Could not update this item.'); }
   }
 
   async function remove(item: Item, type: string) {
     await api.delete('/api/study/' + item.id, { type });
-    load();
+    await load();
   }
 
-  const openForm = (type: string) => {
-    setFormType(type);
-    setShowForm(true);
-    setError('');
-  };
+  const studentCourses = useMemo(() => {
+    if (!user?.courseIds?.length) return courses;
+    return courses.filter(c => user.courseIds.includes(c.id));
+  }, [courses, user]);
 
-  const addType =
-    active === 'programs'
-      ? 'program'
-      : active === 'courses'
-        ? 'course'
-        : active === 'exams'
-          ? 'exam'
-          : 'assignment';
+  const studentAssignments = useMemo(() => {
+    if (!user?.courseIds?.length) return assignments;
+    return assignments.filter(a => user.courseIds.includes(a.courseId));
+  }, [assignments, user]);
+
+  const teacherAssignments = useMemo(() => {
+    if (user?.role !== 'teacher') return assignments;
+    return assignments.filter(a => a.teacherId === user.id || !a.teacherId);
+  }, [assignments, user]);
+
+  const nav = user?.role === 'admin'
+    ? [['dashboard','Dashboard'],['users','Accounts'],['programs','Programs'],['courses','Courses'],['attendance','Attendance']]
+    : user?.role === 'teacher'
+      ? [['dashboard','Dashboard'],['assignments','Assignments'],['submissions','Submissions'],['attendance','Attendance'],['excuses','Excuses']]
+      : [['dashboard','Dashboard'],['courses','Courses'],['assignments','Assignments'],['exams','Exams'],['grades','My Grades'],['attendance','Attendance'],['excuses','My Excuses']];
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-slate-950 px-5 py-10 text-slate-100">
+        <div className="mx-auto max-w-5xl">
+          <div className="mb-12 text-center">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-500"><GraduationCap size={34}/></div>
+            <h1 className="text-4xl font-bold">StudyFlow</h1>
+            <p className="mt-2 text-slate-400">Choose your account type to continue</p>
+          </div>
+          <div className="grid gap-5 md:grid-cols-3">
+            {roleCards.map(card => {
+              const Icon = card.icon;
+              return <button key={card.role} onClick={() => { setLoginRole(card.role); setLoginError(''); }} className="rounded-3xl border border-slate-800 bg-slate-900 p-7 text-left transition hover:-translate-y-1 hover:border-indigo-500">
+                <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-500/15 text-indigo-400"><Icon size={28}/></div>
+                <h2 className="text-xl font-bold">{card.title}</h2>
+                <p className="mt-2 text-sm leading-6 text-slate-400">{card.text}</p>
+                <span className="mt-6 inline-block rounded-xl bg-indigo-500 px-4 py-2 text-sm font-semibold">Continue</span>
+              </button>;
+            })}
+          </div>
+          {loginRole && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4">
+            <form onSubmit={login} className="w-full max-w-md rounded-3xl border border-slate-700 bg-slate-900 p-7">
+              <div className="mb-6 flex items-center justify-between"><div><p className="text-sm text-indigo-400">StudyFlow</p><h2 className="text-2xl font-bold">{loginRole[0].toUpperCase()+loginRole.slice(1)} Login</h2></div><button type="button" onClick={() => setLoginRole(null)}><X/></button></div>
+              {loginError && <div className="mb-4 rounded-xl bg-red-500/10 p-3 text-sm text-red-300">{loginError}</div>}
+              <label className="text-sm text-slate-400">Email<input name="email" type="email" required className="mt-2 w-full rounded-xl bg-slate-800 p-3 outline-none" placeholder="you@example.com"/></label>
+              <label className="mt-4 block text-sm text-slate-400">Password<input name="password" type="password" required className="mt-2 w-full rounded-xl bg-slate-800 p-3 outline-none" placeholder="Enter password"/></label>
+              <button className="mt-6 w-full rounded-xl bg-indigo-500 py-3 font-semibold">Login</button>
+              {loginRole === 'admin' && <p className="mt-4 text-xs text-slate-500">For the initial school setup, create the admin account on the backend before logging in.</p>}
+            </form>
+          </div>}
+        </div>
+      </div>
+    );
+  }
+
+  const openForm = (type: string) => { setFormType(type); setShowForm(true); setError(''); };
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
-      <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-slate-800 bg-slate-900/95 p-5 md:block">
-        <div className="mb-8 flex items-center gap-3">
-          <div className="rounded-xl bg-indigo-500 p-2">
-            <GraduationCap size={22} />
-          </div>
-          <div>
-            <h1 className="font-bold">StudyFlow</h1>
-            <p className="text-xs text-slate-400">Student planner</p>
-          </div>
-        </div>
-        <nav className="space-y-2">
-          {nav.map(n => {
-            const Icon = n.icon;
-            return (
-              <button
-                key={n.id}
-                onClick={() => {
-                  setActive(n.id);
-                  try {
-                    const seen = localStorage.getItem('studyflow_section_' + n.id);
-                    if (seen !== 'true') {
-                      openSectionTutorial(n.id);
-                      localStorage.setItem('studyflow_section_' + n.id, 'true');
-                    }
-                  } catch {
-                    openSectionTutorial(n.id);
-                  }
-                }}
-                className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left ${active === n.id ? 'bg-indigo-500 text-white' : 'text-slate-400 hover:bg-slate-800'}`}
-              >
-                <Icon size={18} />
-                {n.label}
-              </button>
-            );
-          })}
-        </nav>
+      <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-slate-800 bg-slate-900 p-5 md:block">
+        <div className="mb-8 flex items-center gap-3"><div className="rounded-xl bg-indigo-500 p-2"><GraduationCap size={22}/></div><div><h1 className="font-bold">StudyFlow</h1><p className="text-xs text-slate-400">{user.role} portal</p></div></div>
+        <nav className="space-y-2">{nav.map(([id,label]) => <button key={id} onClick={() => setActive(id)} className={`w-full rounded-xl px-4 py-3 text-left ${active===id?'bg-indigo-500':'text-slate-400 hover:bg-slate-800'}`}>{label}</button>)}</nav>
+        <div className="absolute bottom-5 left-5 right-5 rounded-2xl bg-slate-800/70 p-4"><p className="font-semibold">{user.name}</p><p className="text-xs text-slate-400">{user.email}</p><button onClick={logout} className="mt-3 flex items-center gap-2 text-sm text-red-300"><LogOut size={15}/> Logout</button></div>
       </aside>
 
       <main className="md:ml-64">
         <header className="sticky top-0 z-10 border-b border-slate-800 bg-slate-950/90 px-5 py-4 backdrop-blur">
-          <div className="mx-auto flex max-w-6xl items-center justify-between">
-            <div>
-              <p className="text-sm text-indigo-400">Good study session</p>
-              <h2 className="text-xl font-bold">
-                {nav.find(n => n.id === active)?.label}
-              </h2>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => openSectionTutorial(active)}
-                className="rounded-xl border border-slate-700 px-3 py-2 text-sm font-semibold text-slate-300 hover:bg-slate-800"
-              >
-                How to use
-              </button>
-              <button
-                onClick={startTutorial}
-                className="hidden rounded-xl border border-slate-700 px-3 py-2 text-sm font-semibold text-slate-300 hover:bg-slate-800 lg:block"
-              >
-                Full Tutorial
-              </button>
-              <button
-                onClick={() => openForm(addType)}
-                className="flex items-center gap-2 rounded-xl bg-indigo-500 px-4 py-2 font-semibold hover:bg-indigo-400"
-              >
-                <Plus size={18} /> Add
-              </button>
-            </div>
-          </div>
+          <div className="mx-auto flex max-w-6xl items-center justify-between"><div><p className="text-sm text-indigo-400">Welcome, {user.name}</p><h2 className="text-xl font-bold">{nav.find(n=>n[0]===active)?.[1]}</h2></div>
+          {((user.role==='admin' && ['users','programs','courses'].includes(active)) || (user.role==='teacher' && active==='assignments')) && <button onClick={() => openForm(user.role==='admin' ? (active==='users'?'user':active.slice(0,-1)) : 'assignment')} className="flex items-center gap-2 rounded-xl bg-indigo-500 px-4 py-2 font-semibold"><Plus size={18}/> Add</button>}</div>
         </header>
 
         <div className="mx-auto max-w-6xl p-5 md:p-8">
-          {error && (
-            <div className="mb-5 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">
-              {error}
-            </div>
-          )}
+          {error && <div className="mb-5 rounded-xl bg-red-500/10 p-3 text-sm text-red-300">{error}</div>}
 
-          {active === 'dashboard' && (
-            <>
-              <div className="mb-7">
-                <h3 className="text-3xl font-bold">Stay on top of your studies.</h3>
-                <p className="mt-2 text-slate-400">
-                  Organize programs, courses, assignments, exams and progress in one place.
-                </p>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-                {[
-                  ['Programs', programs.length, GraduationCap],
-                  ['Courses', courses.length, BookOpen],
-                  ['Assignments', assignments.length, ClipboardList],
-                  ['Completed', completed, CheckCircle2],
-                  ['Progress', progress + '%', Target],
-                ].map(([label, value, Icon]: any) => (
-                  <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5" key={label}>
-                    <Icon className="mb-4 text-indigo-400" />
-                    <p className="text-sm text-slate-400">{label}</p>
-                    <p className="mt-1 text-3xl font-bold">{value}</p>
-                  </div>
-                ))}
-              </div>
-              <section className="mt-7 rounded-2xl border border-slate-800 bg-slate-900 p-5">
-                <div className="mb-4 flex items-center justify-between">
-                  <h3 className="font-bold">Upcoming assignments</h3>
-                  <button onClick={() => setActive('assignments')} className="text-sm text-indigo-400">
-                    View all
-                  </button>
-                </div>
-                {upcoming.length ? (
-                  <div className="space-y-3">
-                    {upcoming.map(a => (
-                      <div key={a.id} className="flex items-center justify-between rounded-xl bg-slate-800/60 p-4">
-                        <div>
-                          <p className="font-medium">{a.title}</p>
-                          <p className="text-xs text-slate-400">
-                            {courseName(a.courseId, a.course)} · Due {a.dueDate || 'No date'}
-                          </p>
-                        </div>
-                        <span className="rounded-full bg-amber-500/10 px-3 py-1 text-xs text-amber-300">Pending</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-slate-400">No pending assignments.</p>
-                )}
-              </section>
-            </>
-          )}
+          {active==='dashboard' && <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Stat icon={Users} label="Accounts" value={users.length}/>
+            <Stat icon={BookOpen} label="Courses" value={courses.length}/>
+            <Stat icon={ClipboardList} label="Assignments" value={user.role==='student'?studentAssignments.length:assignments.length}/>
+            <Stat icon={CalendarDays} label="Attendance records" value={attendance.length}/>
+          </div>}
 
-          {active === 'programs' && (
-            <List
-              title="Your programs"
-              items={programs}
-              type="program"
-              extra={i => `${courses.filter(c => c.programId === i.id).length} courses`}
-              onDelete={remove}
-            />
-          )}
+          {active==='users' && user.role==='admin' && <List title="School accounts" items={users} extra={u=>`${u.role} · ${u.disabled?'Disabled':'Active'}`} onDelete={x=>updateItem(x,'user',{disabled:!x.disabled})} actionLabel="Toggle status"/>}
 
-          {active === 'courses' && (
-            <List
-              title="Your courses"
-              items={courses}
-              type="course"
-              extra={i => programName(i.programId)}
-              onDelete={remove}
-            />
-          )}
+          {active==='programs' && <List title="Programs" items={programs} extra={p=>`${courses.filter(c=>c.programId===p.id).length} courses`} onDelete={x=>remove(x,'program')}/>}
+          {active==='courses' && <List title="Courses" items={user.role==='student'?studentCourses:courses} extra={c=>programs.find(p=>p.id===c.programId)?.name || 'No program'} onDelete={x=>remove(x,'course')}/>}
 
-          {active === 'assignments' && (
-            <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
-              <h3 className="mb-4 font-bold">Assignments</h3>
-              <div className="space-y-3">
-                {assignments.length ? assignments.map(a => (
-                  <div key={a.id} className="flex items-center gap-3 rounded-xl bg-slate-800/60 p-4">
-                    <input
-                      type="checkbox"
-                      checked={a.completed === true}
-                      onChange={() => toggleAssignment(a)}
-                      aria-label={a.completed === true ? 'Mark assignment incomplete' : 'Mark assignment complete'}
-                      className="h-6 w-6 cursor-pointer accent-indigo-500"
-                    />
-                    <div className="flex-1">
-                      <p className={a.completed ? 'text-slate-500 line-through' : 'font-medium'}>{a.title}</p>
-                      <p className="text-xs text-slate-400">
-                        {courseName(a.courseId, a.course)} · Due {a.dueDate || 'No date'}
-                      </p>
-                    </div>
-                    <button onClick={() => remove(a, 'assignment')} className="text-slate-500 hover:text-red-400">
-                      <Trash2 size={17} />
-                    </button>
-                  </div>
-                )) : <p className="text-slate-400">No assignments yet.</p>}
-              </div>
-            </div>
-          )}
+          {active==='assignments' && <List title={user.role==='student'?'Your assignments':'Assignments you teach'} items={user.role==='student'?studentAssignments:teacherAssignments} extra={a=>`${courses.find(c=>c.id===a.courseId)?.name || 'Course'} · Due ${a.dueDate || 'No date'}`} onDelete={user.role==='teacher'?x=>remove(x,'assignment'):undefined}/>}
 
-          {active === 'exams' && (
-            <List
-              title="Upcoming exams"
-              items={exams}
-              type="exam"
-              extra={i => courseName(i.courseId, i.course)}
-              onDelete={remove}
-            />
-          )}
+          {active==='submissions' && user.role==='teacher' && <div className="space-y-3">{submissions.filter(s=>s.teacherId===user.id || !s.teacherId).map(s=><div key={s.id} className="rounded-2xl border border-slate-800 bg-slate-900 p-5"><div className="flex justify-between"><div><h3 className="font-bold">{s.studentName || 'Student'}</h3><p className="text-sm text-slate-400">{s.assignmentTitle || 'Assignment'} · {s.courseName || ''}</p></div><span className="text-indigo-300">{s.grade != null ? `${s.grade}%` : 'Pending'}</span></div><pre className="mt-4 max-h-48 overflow-auto rounded-xl bg-slate-950 p-4 text-xs text-slate-300">{s.code || s.content || 'No code submitted.'}</pre><button onClick={()=>updateItem(s,'submission',{grade:Number(prompt('Enter grade (0-100)',String(s.grade||''))||0),feedback:prompt('Feedback',s.feedback||'')||''})} className="mt-4 rounded-xl bg-indigo-500 px-4 py-2 text-sm font-semibold">Assess</button></div>)}</div>}
 
-          {active === 'progress' && (
-            <div className="grid gap-4">
-              {courses.map(c => (
-                <div key={c.id} className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
-                  <div className="flex justify-between">
-                    <div>
-                      <span className="font-semibold">{c.name}</span>
-                      <p className="text-xs text-slate-400">{programName(c.programId)}</p>
-                    </div>
-                    <span>{c.progress || 0}%</span>
-                  </div>
-                  <div className="mt-3 h-3 rounded-full bg-slate-800">
-                    <div className="h-3 rounded-full bg-indigo-500" style={{ width: `${Math.min(100, Number(c.progress || 0))}%` }} />
-                  </div>
-                </div>
-              ))}
-              {!courses.length && <p className="text-slate-400">Add courses to start tracking progress.</p>}
-            </div>
-          )}
+          {active==='grades' && user.role==='student' && <div className="grid gap-4">{studentAssignments.map(a=>{const s=submissions.find(x=>x.assignmentId===a.id && x.studentId===user.id);return <div key={a.id} className="rounded-2xl border border-slate-800 bg-slate-900 p-5"><div className="flex justify-between"><span>{a.title}</span><b>{s?.grade != null ? s.grade+'%' : 'Not graded'}</b></div><p className="mt-2 text-sm text-slate-400">{s?.feedback || 'Awaiting teacher assessment.'}</p></div>})}</div>}
+
+          {active==='attendance' && <Attendance attendance={attendance} user={user} courses={courses} onSave={async data=>{await api.post('/api/study',{type:'attendance',data});await load();}}/>}
+
+          {active==='excuses' && <Excuses excuses={excuses} user={user} onSave={async data=>{await api.post('/api/study',{type:'excuse',data});await load();}} onUpdate={updateItem}/>}
+
+          {active==='exams' && <List title="Exams" items={exams} extra={e=>courses.find(c=>c.id===e.courseId)?.name || 'Course'} onDelete={x=>remove(x,'exam')}/>}
         </div>
       </main>
 
-      {tutorialStep !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg overflow-hidden rounded-3xl border border-slate-700 bg-slate-900 shadow-2xl">
-            <div className="relative flex h-36 items-center justify-center bg-gradient-to-br from-indigo-500/20 to-slate-900">
-              <div className="absolute h-24 w-24 animate-ping rounded-full bg-indigo-500/10" />
-              <div className="relative flex h-20 w-20 animate-bounce items-center justify-center rounded-2xl bg-indigo-500 text-white shadow-lg">
-                {(() => {
-                  const Icon = tutorial[tutorialStep].icon;
-                  return <Icon size={38} />;
-                })()}
-              </div>
-            </div>
-
-            <div className="p-6">
-              <div className="mb-4 flex items-center justify-between">
-                <span className="text-sm font-semibold text-indigo-400">
-                  Step {tutorialStep + 1} of {tutorial.length}
-                </span>
-                <button
-                  type="button"
-                  onClick={finishTutorial}
-                  className="text-sm text-slate-400 hover:text-white"
-                >
-                  Skip tutorial
-                </button>
-              </div>
-
-              <div key={tutorialStep} className="animate-pulse">
-                <h3 className="text-2xl font-bold">{tutorial[tutorialStep].title}</h3>
-                <p className="mt-3 leading-6 text-slate-400">{tutorial[tutorialStep].text}</p>
-              </div>
-
-              <div className="mt-6 flex gap-1.5">
-                {tutorial.map((_, index) => (
-                  <div
-                    key={index}
-                    className={`h-1.5 flex-1 rounded-full ${index <= tutorialStep ? 'bg-indigo-500' : 'bg-slate-700'}`}
-                  />
-                ))}
-              </div>
-
-              <div className="mt-6 flex items-center justify-between">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (tutorialStep === 0) return;
-                    const next = tutorialStep - 1;
-                    setTutorialStep(next);
-                    setActive(tutorial[next].page);
-                  }}
-                  disabled={tutorialStep === 0}
-                  className="rounded-xl px-4 py-2 font-semibold text-slate-400 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-30"
-                >
-                  Back
-                </button>
-
-                {tutorialStep === tutorial.length - 1 ? (
-                  <button
-                    type="button"
-                    onClick={finishTutorial}
-                    className="rounded-xl bg-indigo-500 px-6 py-3 font-semibold text-white hover:bg-indigo-400"
-                  >
-                    Finish
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const next = tutorialStep + 1;
-                      setTutorialStep(next);
-                      setActive(tutorial[next].page);
-                    }}
-                    className="rounded-xl bg-indigo-500 px-6 py-3 font-semibold text-white hover:bg-indigo-400"
-                  >
-                    Next
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {sectionTutorial && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg overflow-hidden rounded-3xl border border-slate-700 bg-slate-900 shadow-2xl">
-            <div className="flex items-center gap-4 bg-indigo-500/10 p-6">
-              <div className="flex h-16 w-16 shrink-0 animate-pulse items-center justify-center rounded-2xl bg-indigo-500 text-white">
-                {(() => {
-                  const Icon = sectionGuides[sectionTutorial].icon;
-                  return <Icon size={30} />;
-                })()}
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-indigo-400">Quick Tutorial</p>
-                <h3 className="text-xl font-bold">{sectionGuides[sectionTutorial].title}</h3>
-              </div>
-            </div>
-            <div className="p-6">
-              <p className="text-slate-400">{sectionGuides[sectionTutorial].text}</p>
-              <div className="mt-5 space-y-3">
-                {sectionGuides[sectionTutorial].steps.map((step, index) => (
-                  <div key={step} className="flex gap-3 rounded-xl bg-slate-800/60 p-3">
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo-500 text-sm font-bold">
-                      {index + 1}
-                    </span>
-                    <p className="text-sm text-slate-300">{step}</p>
-                  </div>
-                ))}
-              </div>
-              <button
-                type="button"
-                onClick={() => setSectionTutorial(null)}
-                className="mt-6 w-full rounded-xl bg-indigo-500 py-3 font-semibold text-white hover:bg-indigo-400"
-              >
-                Got it
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showForm && (
-        <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/70 p-4">
-          <form onSubmit={save} className="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-6">
-            <div className="mb-5 flex items-center justify-between">
-              <h3 className="text-xl font-bold">Add {formType}</h3>
-              <button type="button" onClick={() => setShowForm(false)}><X /></button>
-            </div>
-
-            {formType === 'program' && (
-              <label className="text-sm text-slate-400">
-                Program name
-                <input name="name" className="mt-2 w-full rounded-xl bg-slate-800 p-3 outline-none" placeholder="e.g. Software Engineering" />
-              </label>
-            )}
-
-            {formType === 'course' && (
-              <>
-                <label className="text-sm text-slate-400">
-                  Course name
-                  <input name="name" className="mt-2 w-full rounded-xl bg-slate-800 p-3 outline-none" placeholder="e.g. Web Development" />
-                </label>
-                <label className="mt-4 block text-sm text-slate-400">
-                  Program
-                  <select name="programId" defaultValue="" className="mt-2 w-full rounded-xl bg-slate-800 p-3 outline-none">
-                    <option value="">Select a program</option>
-                    {programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                  </select>
-                </label>
-                <label className="mt-4 block text-sm text-slate-400">
-                  Progress (%)
-                  <input name="progress" type="number" min="0" max="100" className="mt-2 w-full rounded-xl bg-slate-800 p-3 outline-none" placeholder="0" />
-                </label>
-              </>
-            )}
-
-            {(formType === 'assignment' || formType === 'exam') && (
-              <>
-                <label className="text-sm text-slate-400">
-                  Title
-                  <input name="title" className="mt-2 w-full rounded-xl bg-slate-800 p-3 outline-none" placeholder={formType === 'exam' ? 'e.g. PHP Exam' : 'e.g. PHP Assignment'} />
-                </label>
-                <label className="mt-4 block text-sm text-slate-400">
-                  Course
-                  <select name="courseId" defaultValue="" className="mt-2 w-full rounded-xl bg-slate-800 p-3 outline-none">
-                    <option value="">Select a course</option>
-                    {courseOptions.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
-                </label>
-                <label className="mt-4 block text-sm text-slate-400">
-                  Date
-                  <input name={formType === 'exam' ? 'date' : 'dueDate'} type="date" className="mt-2 w-full rounded-xl bg-slate-800 p-3 outline-none" />
-                </label>
-              </>
-            )}
-
-            <button className="mt-6 w-full rounded-xl bg-indigo-500 py-3 font-semibold">Save</button>
-          </form>
-        </div>
-      )}
+      {showForm && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4"><form onSubmit={save} className="w-full max-w-md rounded-3xl border border-slate-700 bg-slate-900 p-6">
+        <div className="mb-5 flex items-center justify-between"><h3 className="text-xl font-bold">Add {formType}</h3><button type="button" onClick={()=>setShowForm(false)}><X/></button></div>
+        {formType==='user' && <><Field name="name" label="Full name"/><Field name="email" label="Email" type="email"/><Field name="password" label="Temporary password" type="password"/><label className="mt-4 block text-sm text-slate-400">Role<select name="role" className="mt-2 w-full rounded-xl bg-slate-800 p-3"><option value="student">Student</option><option value="teacher">Teacher</option><option value="admin">Admin</option></select></label><Field name="programId" label="Program ID (optional)"/><Field name="courseIds" label="Course IDs, comma separated (optional)"/></>}
+        {formType==='program' && <Field name="name" label="Program name"/>}
+        {formType==='course' && <><Field name="name" label="Course name"/><label className="mt-4 block text-sm text-slate-400">Program<select name="programId" className="mt-2 w-full rounded-xl bg-slate-800 p-3">{programs.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label></>}
+        {formType==='assignment' && <><Field name="title" label="Assignment title"/><Field name="instructions" label="Instructions"/><label className="mt-4 block text-sm text-slate-400">Course<select name="courseId" className="mt-2 w-full rounded-xl bg-slate-800 p-3">{courses.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label><Field name="dueDate" label="Due date" type="date"/><input type="hidden" name="teacherId" value={user.id}/></>}
+        <button className="mt-6 w-full rounded-xl bg-indigo-500 py-3 font-semibold">Save</button>
+      </form></div>}
     </div>
   );
 }
 
-function List({
-  title,
-  items,
-  type,
-  extra,
-  onDelete,
-}: {
-  title: string;
-  items: Item[];
-  type: string;
-  extra: (item: Item) => string;
-  onDelete: (item: Item, type: string) => void;
-}) {
-  return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
-      <h3 className="mb-4 font-bold">{title}</h3>
-      {items.length ? (
-        <div className="space-y-3">
-          {items.map(i => (
-            <div key={i.id} className="flex items-center justify-between rounded-xl bg-slate-800/60 p-4">
-              <div>
-                <p className="font-medium">{i.name || i.title}</p>
-                <p className="text-xs text-slate-400">
-                  {extra(i)}{i.progress != null ? ` · ${i.progress}% progress` : i.date ? ` · ${i.date}` : ''}
-                </p>
-              </div>
-              <button onClick={() => onDelete(i, type)} className="text-slate-500 hover:text-red-400">
-                <Trash2 size={17} />
-              </button>
-            </div>
-          ))}
-        </div>
-      ) : <p className="text-slate-400">Nothing here yet.</p>}
-    </div>
-  );
+function Field({name,label,type='text'}:{name:string;label:string;type?:string}) {
+  return <label className="mt-4 block text-sm text-slate-400">{label}<input name={name} type={type} required={name!=='instructions'} className="mt-2 w-full rounded-xl bg-slate-800 p-3 outline-none"/></label>;
+}
+function Stat({icon:Icon,label,value}:{icon:any;label:string;value:any}) { return <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5"><Icon className="mb-4 text-indigo-400"/><p className="text-sm text-slate-400">{label}</p><p className="mt-1 text-3xl font-bold">{value}</p></div>; }
+function List({title,items,extra,onDelete,actionLabel}:{title:string;items:Item[];extra:(i:Item)=>string;onDelete?:((i:Item)=>void);actionLabel?:string}) {
+  return <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5"><h3 className="mb-4 font-bold">{title}</h3>{items.length?<div className="space-y-3">{items.map(i=><div key={i.id} className="flex items-center justify-between rounded-xl bg-slate-800/60 p-4"><div><p className="font-medium">{i.name||i.title}</p><p className="text-xs text-slate-400">{extra(i)}</p></div>{onDelete&&<button onClick={()=>onDelete(i)} className="text-sm text-indigo-300">{actionLabel || 'Delete'}</button>}</div>)}</div>:<p className="text-slate-400">Nothing here yet.</p>}</div>;
+}
+function Attendance({attendance,user,courses,onSave}:{attendance:Item[];user:Item;courses:Item[];onSave:(d:Item)=>Promise<void>}) {
+  const mine=user.role==='student'?attendance.filter(a=>a.studentId===user.id):attendance;
+  const eligible=(courseId:string)=>{const rows=mine.filter(a=>a.courseId===courseId);if(!rows.length)return true;const score=rows.reduce((n,a)=>n+(a.status==='Present'?1:a.status==='Late'?0.5:0),0)/rows.length*100;return score>=80;};
+  return <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5"><h3 className="mb-4 font-bold">Attendance & Exam Eligibility</h3>{user.role!=='student'&&<form onSubmit={async e=>{e.preventDefault();const d=Object.fromEntries(new FormData(e.currentTarget).entries());await onSave({...d,teacherId:user.id});e.currentTarget.reset();}} className="mb-6 grid gap-3 md:grid-cols-4"><input name="studentName" placeholder="Student name" className="rounded-xl bg-slate-800 p-3"/><select name="courseId" className="rounded-xl bg-slate-800 p-3">{courses.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select><select name="status" className="rounded-xl bg-slate-800 p-3"><option>Present</option><option>Late</option><option>Absent</option></select><button className="rounded-xl bg-indigo-500 p-3 font-semibold">Record</button></form>}{courses.map(c=><div key={c.id} className="mb-3 flex items-center justify-between rounded-xl bg-slate-800/60 p-4"><span>{c.name}</span><span className={eligible(c.id)?'text-emerald-300':'text-red-300'}>{eligible(c.id)?'Eligible (80%+)':'Not Eligible'}</span></div>)}</div>;
+}
+function Excuses({excuses,user,onSave,onUpdate}:{excuses:Item[];user:Item;onSave:(d:Item)=>Promise<void>;onUpdate:(i:Item,t:string,c:Item)=>Promise<void>}) {
+  const mine=user.role==='student'?excuses.filter(x=>x.studentId===user.id):excuses;
+  return <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5"><h3 className="mb-4 font-bold">{user.role==='student'?'My Attendance Excuses':'Attendance Excuse Requests'}</h3>{user.role==='student'&&<form onSubmit={async e=>{e.preventDefault();const d=Object.fromEntries(new FormData(e.currentTarget).entries());await onSave({...d,studentId:user.id,status:'Pending'});e.currentTarget.reset();}} className="mb-6 flex gap-3"><input name="reason" required placeholder="Reason for absence" className="flex-1 rounded-xl bg-slate-800 p-3"/><button className="rounded-xl bg-indigo-500 px-5 font-semibold">Submit</button></form>}{mine.map(x=><div key={x.id} className="mb-3 rounded-xl bg-slate-800/60 p-4"><div className="flex justify-between"><span>{x.reason}</span><b>{x.status||'Pending'}</b></div>{user.role!=='student'&&x.status==='Pending'&&<div className="mt-3 flex gap-2"><button onClick={()=>onUpdate(x,'excuse',{status:'Approved',teacherId:user.id})} className="rounded-lg bg-emerald-500/20 px-3 py-2 text-sm text-emerald-300">Approve</button><button onClick={()=>onUpdate(x,'excuse',{status:'Rejected',teacherId:user.id})} className="rounded-lg bg-red-500/20 px-3 py-2 text-sm text-red-300">Reject</button></div>}</div>)}</div>;
 }
 
 export default App;
