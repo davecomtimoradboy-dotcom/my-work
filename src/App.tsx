@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '@appdeploy/client';
-import { BookOpen, CalendarDays, CheckCircle2, ClipboardList, GraduationCap, LayoutDashboard, LogOut, Plus, ShieldCheck, Users, X } from 'lucide-react';
+import { AlertCircle, Award, BarChart3, BookOpen, CalendarDays, CheckCircle2, ChevronRight, ClipboardList, GraduationCap, LayoutDashboard, LogOut, Menu, Plus, Search, Send, ShieldCheck, Trash2, Users, X } from 'lucide-react';
 
 type Item = { id: string; [key: string]: any };
 type Role = 'student' | 'teacher' | 'admin';
@@ -29,8 +29,16 @@ function App() {
   const [showForm, setShowForm] = useState(false);
   const [formType, setFormType] = useState('');
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const [showSubmit, setShowSubmit] = useState<Item | null>(null);
+  const [showGrade, setShowGrade] = useState<Item | null>(null);
+  const [loading, setLoading] = useState(false);
 
   async function load() {
+    setLoading(true);
+    try {
     const result = await api.get('/api/study');
     setPrograms(result.data.programs || []);
     setCourses(result.data.courses || []);
@@ -40,6 +48,7 @@ function App() {
     setUsers(result.data.users || []);
     setAttendance(result.data.attendance || []);
     setExcuses(result.data.excuses || []);
+    } finally { setLoading(false); }
   }
 
   useEffect(() => {
@@ -88,9 +97,8 @@ function App() {
     }
   }
 
-  async function submitAssignment(a: Item) {
-    const code = prompt('Paste your assignment code here:');
-    if (code === null || !code.trim()) return;
+  async function submitAssignment(a: Item, code: string) {
+    if (!code.trim()) return;
     try {
       await api.post('/api/study', {
         type: 'submission',
@@ -107,7 +115,8 @@ function App() {
           status: 'Submitted',
         },
       });
-      alert('Assignment submitted successfully.');
+      setShowSubmit(null);
+      setNotice('Assignment submitted successfully.');
       await load();
     } catch {
       setError('Could not submit the assignment.');
@@ -122,8 +131,9 @@ function App() {
   }
 
   async function remove(item: Item, type: string) {
-    await api.delete('/api/study/' + item.id, { type });
-    await load();
+    if (!window.confirm('Delete this item? This cannot be undone.')) return;
+    try { await api.delete('/api/study/' + item.id, { type }); setNotice('Item deleted.'); await load(); }
+    catch { setError('Could not delete this item.'); }
   }
 
   const studentCourses = useMemo(() => {
@@ -187,35 +197,32 @@ function App() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-slate-800 bg-slate-900 p-5 md:block">
-        <div className="mb-8 flex items-center gap-3"><div className="rounded-xl bg-indigo-500 p-2"><GraduationCap size={22}/></div><div><h1 className="font-bold">StudyFlow</h1><p className="text-xs text-slate-400">{user.role} portal</p></div></div>
-        <nav className="space-y-2">{nav.map(([id,label]) => <button key={id} onClick={() => setActive(id)} className={`w-full rounded-xl px-4 py-3 text-left ${active===id?'bg-indigo-500':'text-slate-400 hover:bg-slate-800'}`}>{label}</button>)}</nav>
+        <div className="mb-8 flex items-center gap-3"><div className="rounded-xl bg-indigo-500 p-2"><GraduationCap size={22}/></div><div><h1 className="font-bold">StudyFlow</h1><p className="text-xs text-slate-400">{user.role} portal</p></div><button onClick={() => setMobileOpen(false)} className="ml-auto md:hidden"><X size={18}/></button></div>
+        <nav className="space-y-2">{nav.map(([id,label]) => <button key={id} onClick={() => { setActive(id); setMobileOpen(false); }} className={`w-full rounded-xl px-4 py-3 text-left ${active===id?'bg-indigo-500':'text-slate-400 hover:bg-slate-800'}`}>{label}</button>)}</nav>
         <div className="absolute bottom-5 left-5 right-5 rounded-2xl bg-slate-800/70 p-4"><p className="font-semibold">{user.name}</p><p className="text-xs text-slate-400">{user.email}</p><button onClick={logout} className="mt-3 flex items-center gap-2 text-sm text-red-300"><LogOut size={15}/> Logout</button></div>
       </aside>
 
       <main className="md:ml-64">
-        <header className="sticky top-0 z-10 border-b border-slate-800 bg-slate-950/90 px-5 py-4 backdrop-blur">
-          <div className="mx-auto flex max-w-6xl items-center justify-between"><div><p className="text-sm text-indigo-400">Welcome, {user.name}</p><h2 className="text-xl font-bold">{nav.find(n=>n[0]===active)?.[1]}</h2></div>
+        <header className="sticky top-0 z-30 border-b border-slate-800 bg-slate-950/90 px-4 py-3 backdrop-blur sm:px-6">
+          <div className="mx-auto flex max-w-7xl items-center justify-between gap-3"><div className="flex items-center gap-3"><button aria-label="Open navigation" onClick={() => setMobileOpen(true)} className="rounded-xl border border-slate-800 p-2 md:hidden"><Menu size={19}/></button><p className="text-sm text-indigo-400">Welcome, {user.name}</p><h2 className="text-xl font-bold">{nav.find(n=>n[0]===active)?.[1]}</h2></div>
           {((user.role==='admin' && ['users','programs','courses'].includes(active)) || (user.role==='teacher' && active==='assignments')) && <button onClick={() => openForm(user.role==='admin' ? (active==='users'?'user':active.slice(0,-1)) : 'assignment')} className="flex items-center gap-2 rounded-xl bg-indigo-500 px-4 py-2 font-semibold"><Plus size={18}/> Add</button>}</div>
         </header>
 
         <div className="mx-auto max-w-6xl p-5 md:p-8">
-          {error && <div className="mb-5 rounded-xl bg-red-500/10 p-3 text-sm text-red-300">{error}</div>}
+          {error && <div className="mb-4 flex items-center justify-between rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-300"><span className="flex items-center gap-2"><AlertCircle size={17}/>{error}</span><button onClick={() => setError('')}><X size={16}/></button></div>}
+          {notice && <div className="mb-4 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-sm text-emerald-300">{notice}</div>}
+          {loading && <div className="mb-4 h-1 overflow-hidden rounded-full bg-slate-900"><div className="h-full w-1/3 animate-pulse bg-indigo-500"/></div>}
 
-          {active==='dashboard' && <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Stat icon={Users} label="Accounts" value={users.length}/>
-            <Stat icon={BookOpen} label="Courses" value={courses.length}/>
-            <Stat icon={ClipboardList} label="Assignments" value={user.role==='student'?studentAssignments.length:assignments.length}/>
-            <Stat icon={CalendarDays} label="Attendance records" value={attendance.length}/>
-          </div>}
+          {active==='dashboard' && <Dashboard user={user} courses={user.role==='student'?studentCourses:courses} assignments={user.role==='student'?studentAssignments:teacherAssignments} submissions={submissions} attendance={attendance} users={users} setActive={setActive}/>} 
 
           {active==='users' && user.role==='admin' && <List title="School accounts" items={users} extra={u=>`${u.role} · ${u.disabled?'Disabled':'Active'}`} onDelete={x=>updateItem(x,'user',{disabled:!x.disabled})} actionLabel="Toggle status"/>}
 
           {active==='programs' && <List title="Programs" items={programs} extra={p=>`${courses.filter(c=>c.programId===p.id).length} courses`} onDelete={x=>remove(x,'program')}/>}
           {active==='courses' && <List title="Courses" items={user.role==='student'?studentCourses:courses} extra={c=>programs.find(p=>p.id===c.programId)?.name || 'No program'} onDelete={x=>remove(x,'course')}/>}
 
-          {active==='assignments' && <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5"><h3 className="mb-4 font-bold">{user.role==='student'?'Your assignments':'Assignments you teach'}</h3><div className="space-y-3">{(user.role==='student'?studentAssignments:teacherAssignments).map(a=><div key={a.id} className="flex items-center justify-between rounded-xl bg-slate-800/60 p-4"><div><p className="font-medium">{a.title}</p><p className="text-xs text-slate-400">{courses.find(c=>c.id===a.courseId)?.name || 'Course'} · Due {a.dueDate || 'No date'}</p></div>{user.role==='student'?<button onClick={()=>submitAssignment(a)} className="rounded-xl bg-indigo-500 px-4 py-2 text-sm font-semibold">Submit Code</button>:<button onClick={()=>remove(a,'assignment')} className="text-sm text-red-300">Delete</button>}</div>)}</div></div>}
+          {active==='assignments' && <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5"><h3 className="mb-4 font-bold">{user.role==='student'?'Your assignments':'Assignments you teach'}</h3><div className="space-y-3">{(user.role==='student'?studentAssignments:teacherAssignments).map(a=><div key={a.id} className="flex items-center justify-between rounded-xl bg-slate-800/60 p-4"><div><p className="font-medium">{a.title}</p><p className="text-xs text-slate-400">{courses.find(c=>c.id===a.courseId)?.name || 'Course'} · Due {a.dueDate || 'No date'}</p></div>{user.role==='student'?<button disabled={submissions.some(s=>s.assignmentId===a.id&&s.studentId===user.id)} onClick={()=>setShowSubmit(a)} className="rounded-xl bg-indigo-500 px-4 py-2 text-sm font-semibold disabled:bg-slate-700">{submissions.some(s=>s.assignmentId===a.id&&s.studentId===user.id)?'Submitted':'Submit Work'}</button>:<button onClick={()=>remove(a,'assignment')} className="text-sm text-red-300">Delete</button>}</div>)}</div></div>}
 
-          {active==='submissions' && user.role==='teacher' && <div className="space-y-3">{submissions.filter(s=>s.teacherId===user.id || !s.teacherId).map(s=><div key={s.id} className="rounded-2xl border border-slate-800 bg-slate-900 p-5"><div className="flex justify-between"><div><h3 className="font-bold">{s.studentName || 'Student'}</h3><p className="text-sm text-slate-400">{s.assignmentTitle || 'Assignment'} · {s.courseName || ''}</p></div><span className="text-indigo-300">{s.grade != null ? `${s.grade}%` : 'Pending'}</span></div><pre className="mt-4 max-h-48 overflow-auto rounded-xl bg-slate-950 p-4 text-xs text-slate-300">{s.code || s.content || 'No code submitted.'}</pre><button onClick={()=>updateItem(s,'submission',{grade:Number(prompt('Enter grade (0-100)',String(s.grade||''))||0),feedback:prompt('Feedback',s.feedback||'')||''})} className="mt-4 rounded-xl bg-indigo-500 px-4 py-2 text-sm font-semibold">Assess</button></div>)}</div>}
+          {active==='submissions' && user.role==='teacher' && <div className="space-y-3">{submissions.filter(s=>s.teacherId===user.id || !s.teacherId).map(s=><div key={s.id} className="rounded-2xl border border-slate-800 bg-slate-900 p-5"><div className="flex justify-between"><div><h3 className="font-bold">{s.studentName || 'Student'}</h3><p className="text-sm text-slate-400">{s.assignmentTitle || 'Assignment'} · {s.courseName || ''}</p></div><span className="text-indigo-300">{s.grade != null ? `${s.grade}%` : 'Pending'}</span></div><pre className="mt-4 max-h-48 overflow-auto rounded-xl bg-slate-950 p-4 text-xs text-slate-300">{s.code || s.content || 'No code submitted.'}</pre><button onClick={()=>setShowGrade(s)} className="mt-4 rounded-xl bg-indigo-500 px-4 py-2 text-sm font-semibold">{s.grade != null ? 'Update grade' : 'Assess submission'}</button></div>)}</div>}
 
           {active==='grades' && user.role==='student' && <div className="grid gap-4">{studentAssignments.map(a=>{const s=submissions.find(x=>x.assignmentId===a.id && x.studentId===user.id);return <div key={a.id} className="rounded-2xl border border-slate-800 bg-slate-900 p-5"><div className="flex justify-between"><span>{a.title}</span><b>{s?.grade != null ? s.grade+'%' : 'Not graded'}</b></div><p className="mt-2 text-sm text-slate-400">{s?.feedback || 'Awaiting teacher assessment.'}</p></div>})}</div>}
 
@@ -227,7 +234,7 @@ function App() {
         </div>
       </main>
 
-      {showForm && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4"><form onSubmit={save} className="w-full max-w-md rounded-3xl border border-slate-700 bg-slate-900 p-6">
+      {showSubmit && <SubmitModal assignment={showSubmit} onClose={() => setShowSubmit(null)} onSubmit={(code:string) => submitAssignment(showSubmit, code)}/>}\n      {showGrade && <GradeModal submission={showGrade} onClose={() => setShowGrade(null)} onSubmit={async (grade:number, feedback:string) => { await updateItem(showGrade,'submission',{grade,feedback}); setShowGrade(null); }}/>}\n\n      {showForm && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4"><form onSubmit={save} className="w-full max-w-md rounded-3xl border border-slate-700 bg-slate-900 p-6">
         <div className="mb-5 flex items-center justify-between"><h3 className="text-xl font-bold">Add {formType}</h3><button type="button" onClick={()=>setShowForm(false)}><X/></button></div>
         {formType==='user' && <><Field name="name" label="Full name"/><Field name="email" label="Email" type="email"/><Field name="password" label="Temporary password" type="password"/><label className="mt-4 block text-sm text-slate-400">Role<select name="role" className="mt-2 w-full rounded-xl bg-slate-800 p-3"><option value="student">Student</option><option value="teacher">Teacher</option><option value="admin">Admin</option></select></label><Field name="programId" label="Program ID (optional)"/><Field name="courseIds" label="Course IDs, comma separated (optional)"/></>}
         {formType==='program' && <Field name="name" label="Program name"/>}
@@ -239,7 +246,7 @@ function App() {
   );
 }
 
-function Field({name,label,type='text'}:{name:string;label:string;type?:string}) {
+\nfunction Dashboard({user,courses,assignments,submissions,attendance,users,setActive}:any) { const graded=submissions.filter((s:any)=>s.grade!=null); const avg=graded.length?Math.round(graded.reduce((n:number,s:any)=>n+Number(s.grade),0)/graded.length):0; const mine=user.role==='student'?attendance.filter((a:any)=>a.studentId===user.id):attendance; const rate=mine.length?Math.round(mine.filter((a:any)=>a.status==='Present').length/mine.length*100):0; const stats=user.role==='student'?[[BookOpen,'My Courses',courses.length],[ClipboardList,'Assignments',assignments.length],[Award,'Average Grade',graded.length?avg+'%':'—'],[CheckCircle2,'Attendance',mine.length?rate+'%':'—']]:user.role==='teacher'?[[ClipboardList,'Assignments',assignments.length],[Send,'Submissions',submissions.length],[BookOpen,'Courses',courses.length],[CheckCircle2,'Attendance',attendance.length]]:[[Users,'Accounts',users.length],[BookOpen,'Courses',courses.length],[ClipboardList,'Assignments',assignments.length],[CheckCircle2,'Attendance',attendance.length]]; return <div className="space-y-6"><section className="rounded-3xl border border-slate-800 bg-gradient-to-br from-indigo-600/20 via-slate-900 to-slate-900 p-6 sm:p-8"><p className="text-sm font-semibold text-indigo-300">Academic overview</p><h2 className="mt-2 text-2xl font-bold sm:text-3xl">{user.role==='student'?'Keep your learning moving.':'Stay on top of school activity.'}</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">Your important academic activity is organized here so you can quickly see what needs attention.</p></section><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{stats.map(([Icon,label,value]:any)=><Stat key={label} icon={Icon} label={label} value={value}/>)}</div><section className="rounded-2xl border border-slate-800 bg-slate-900 p-5"><div className="mb-4 flex items-center justify-between"><div><h3 className="font-bold">Recent assignments</h3><p className="text-xs text-slate-500">Your latest academic work</p></div><button onClick={()=>setActive('assignments')} className="text-sm font-semibold text-indigo-300">View all</button></div>{assignments.slice(0,5).map((a:any)=><div key={a.id} className="mb-2 flex items-center justify-between rounded-xl bg-slate-800/50 p-3.5"><div><p className="font-medium">{a.title}</p><p className="mt-1 text-xs text-slate-500">{courses.find((c:any)=>c.id===a.courseId)?.name||'Course'} · Due {a.dueDate||'No date'}</p></div><ChevronRight size={16} className="text-slate-600"/></div>)}</section></div>; }\nfunction SubmitModal({assignment,onClose,onSubmit}:any){const [code,setCode]=useState('');return <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4"><div className="w-full max-w-2xl rounded-3xl border border-slate-700 bg-slate-900 p-6"><div className="mb-5 flex items-center justify-between"><h3 className="text-xl font-bold">Submit: {assignment.title}</h3><button onClick={onClose}><X/></button></div><p className="mb-4 text-sm text-slate-400">Paste your completed code below.</p><textarea value={code} onChange={e=>setCode(e.target.value)} rows={15} className="w-full rounded-xl bg-slate-950 p-4 font-mono text-xs outline-none" placeholder="Paste your code here..."/><button disabled={!code.trim()} onClick={()=>onSubmit(code)} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-500 py-3 font-semibold disabled:bg-slate-700"><Send size={17}/> Submit assignment</button></div></div>; }\nfunction GradeModal({submission,onClose,onSubmit}:any){const [grade,setGrade]=useState(submission.grade?.toString()||'');const [feedback,setFeedback]=useState(submission.feedback||'');return <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4"><div className="w-full max-w-lg rounded-3xl border border-slate-700 bg-slate-900 p-6"><div className="mb-5 flex items-center justify-between"><h3 className="text-xl font-bold">Assess submission</h3><button onClick={onClose}><X/></button></div><p className="text-sm text-slate-400">{submission.studentName} · {submission.assignmentTitle}</p><label className="mt-5 block text-sm text-slate-400">Grade (0–100)<input type="number" min="0" max="100" value={grade} onChange={e=>setGrade(e.target.value)} className="mt-2 w-full rounded-xl bg-slate-800 p-3"/></label><label className="mt-4 block text-sm text-slate-400">Feedback<textarea value={feedback} onChange={e=>setFeedback(e.target.value)} rows={5} className="mt-2 w-full rounded-xl bg-slate-800 p-3"/></label><button onClick={()=>onSubmit(Math.max(0,Math.min(100,Number(grade))),feedback)} className="mt-5 w-full rounded-xl bg-indigo-500 py-3 font-semibold">Save assessment</button></div></div>; }\nfunction Field({name,label,type='text'}:{name:string;label:string;type?:string}) {
   return <label className="mt-4 block text-sm text-slate-400">{label}<input name={name} type={type} required={name!=='instructions'} className="mt-2 w-full rounded-xl bg-slate-800 p-3 outline-none"/></label>;
 }
 function Stat({icon:Icon,label,value}:{icon:any;label:string;value:any}) { return <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5"><Icon className="mb-4 text-indigo-400"/><p className="text-sm text-slate-400">{label}</p><p className="mt-1 text-3xl font-bold">{value}</p></div>; }
