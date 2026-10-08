@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '@appdeploy/client';
-import { AlertCircle, Award, BarChart3, BookOpen, CalendarDays, CheckCircle2, ChevronRight, ClipboardList, GraduationCap, LayoutDashboard, LogOut, Menu, Plus, Search, Send, ShieldCheck, Trash2, Users, X } from 'lucide-react';
+import { AlertCircle, Award, BookOpen, CheckCircle2, ChevronRight, ClipboardList, GraduationCap, LogOut, Menu, Plus, Send, ShieldCheck, Users, X } from 'lucide-react';
 
 type Item = { id: string; [key: string]: any };
 type Role = 'student' | 'teacher' | 'admin';
@@ -31,7 +31,6 @@ function App() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [search, setSearch] = useState('');
   const [showSubmit, setShowSubmit] = useState<Item | null>(null);
   const [showGrade, setShowGrade] = useState<Item | null>(null);
   const [loading, setLoading] = useState(false);
@@ -123,7 +122,7 @@ function App() {
     }
   }
 
-  async function updateItem(item: Item, type: string, changes: Item) {
+  async function updateItem(item: Item, type: string, changes: Record<string, any>) {
     try {
       await api.put('/api/study/' + item.id, { type, data: { ...item, ...changes } });
       await load();
