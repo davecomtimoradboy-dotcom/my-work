@@ -108,5 +108,25 @@
       "Log in as the selected student and open My Results"
     ],
     "expected": "The result total and grade are calculated, remains a draft until published, and is visible in My Results only after publication."
+  },
+  {
+    "name": "Slow or offline connections show useful loading and retry feedback",
+    "viewport": "mobile",
+    "covers": [
+      "initial dashboard loading screen",
+      "loading feedback during authentication",
+      "offline network banner",
+      "API timeout and retry"
+    ],
+    "description": "Verifies that waiting for the API is visible and users can recover from network problems instead of seeing a blank dashboard.",
+    "steps": [
+      "Sign in with a valid demo account while the dashboard API is delayed",
+      "Verify the StudyFlow loading screen and skeleton cards are visible",
+      "Allow the dashboard request to exceed the timeout",
+      "Verify a clear timeout message and Retry control are displayed",
+      "Simulate a lost network connection",
+      "Verify the offline banner appears and sign-in actions are disabled"
+    ],
+    "expected": "StudyFlow shows progress while waiting, communicates timeout/offline problems clearly, and offers a retry after connectivity returns."
   }
 ]

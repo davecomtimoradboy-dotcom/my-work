@@ -19,6 +19,9 @@ import {
   Plus,
   Send,
   X,
+  LoaderCircle,
+  WifiOff,
+  RefreshCw,
 } from 'lucide-react';
 
 type Item = { id: string; [key: string]: any };
@@ -61,6 +64,20 @@ function App() {
   const [showSubmit, setShowSubmit] = useState<Item | null>(null);
   const [showGrade, setShowGrade] = useState<Item | null>(null);
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(Boolean(user));
+  const [loginBusy, setLoginBusy] = useState(false);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [loadTimedOut, setLoadTimedOut] = useState(false);
+
+  useEffect(() => {
+    const updateNetworkStatus = () => setIsOnline(navigator.onLine);
+    window.addEventListener('online', updateNetworkStatus);
+    window.addEventListener('offline', updateNetworkStatus);
+    return () => {
+      window.removeEventListener('online', updateNetworkStatus);
+      window.removeEventListener('offline', updateNetworkStatus);
+    };
+  }, []);
 
   useEffect(() => {
     const syncPortal = () => {
@@ -106,8 +123,18 @@ function App() {
 
   async function load() {
     setLoading(true);
+    setLoadTimedOut(false);
+    let timeoutId: number | undefined;
     try {
-      const result = await api.get('/api/study');
+      const result = await Promise.race([
+        api.get('/api/study'),
+        new Promise<never>((_, reject) => {
+          timeoutId = window.setTimeout(() => {
+            setLoadTimedOut(true);
+            reject(new Error('StudyFlow is taking longer than expected. Check your connection and retry.'));
+          }, 12000);
+        }),
+      ]);
       setPrograms(result.data.programs || []);
       setCourses(result.data.courses || []);
       setAssignments(result.data.assignments || []);
@@ -118,18 +145,21 @@ function App() {
       setAttendance(result.data.attendance || []);
       setExcuses(result.data.excuses || []);
     } finally {
+      if (timeoutId !== undefined) window.clearTimeout(timeoutId);
       setLoading(false);
+      setInitialLoading(false);
     }
   }
 
   useEffect(() => {
-    if (user) load().catch(() => setError('Unable to load StudyFlow data.'));
+    if (user) load().catch((err: any) => setError(err?.message || 'Unable to load StudyFlow data.'));
   }, [user]);
 
   async function login(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoginError('');
     const data = Object.fromEntries(new FormData(e.currentTarget).entries());
+    setLoginBusy(true);
     try {
       const result = await api.post('/api/auth/login', {
         studyflowId: data.studyflowId,
@@ -142,7 +172,9 @@ function App() {
       setLoginRole(null);
       setActive('dashboard');
     } catch (err: any) {
-      setLoginError(err?.message || 'Invalid email, password or account type.');
+      setLoginError(!navigator.onLine ? 'You appear to be offline. Reconnect and try again.' : err?.message || 'Unable to sign in. Please try again.');
+    } finally {
+      setLoginBusy(false);
     }
   }
 
@@ -152,11 +184,13 @@ function App() {
     const data = Object.fromEntries(new FormData(e.currentTarget).entries());
     if (String(data.password || '').length < 6) { setLoginError('Choose a password with at least 6 characters.'); return; }
     if (data.password !== data.confirmPassword) { setLoginError('The passwords do not match.'); return; }
+    setLoginBusy(true);
     try {
       const result = await api.post('/api/auth/register', { name: String(data.name || '').trim(), password: data.password, role: loginRole });
       setRegisteredAccount(result.data.user);
       setLoginMode('login');
-    } catch (err: any) { setLoginError(err?.message || 'Could not create your account. Please try again.'); }
+    } catch (err: any) { setLoginError(!navigator.onLine ? 'You appear to be offline. Reconnect and try again.' : err?.message || 'Could not create your account. Please try again.'); }
+    finally { setLoginBusy(false); }
   }
 
   function logout() {
@@ -263,6 +297,23 @@ function App() {
             ['excuses', 'My Excuses'],
           ];
 
+  if (user && initialLoading) {
+    return (
+      <div className="min-h-screen bg-slate-950 px-5 py-10 text-slate-100" role="status" aria-live="polite">
+        <div className="mx-auto flex min-h-[80vh] max-w-3xl flex-col items-center justify-center">
+          <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-500 shadow-lg shadow-indigo-950/40"><GraduationCap size={34} /></div>
+          <h1 className="text-3xl font-bold tracking-tight">StudyFlow</h1>
+          <div className="mt-6 flex items-center gap-3 text-sm text-slate-300"><LoaderCircle size={20} className="animate-spin text-indigo-400" /> Preparing your dashboard…</div>
+          <p className="mt-2 text-center text-sm text-slate-500">Loading your courses, assignments and academic records.</p>
+          {!isOnline && <p className="mt-5 flex items-center gap-2 rounded-xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-sm text-amber-200"><WifiOff size={17} /> You are offline. Reconnect to load your dashboard.</p>}
+          <div className="mt-10 grid w-full gap-4 sm:grid-cols-3">
+            {[1, 2, 3].map(card => <div key={card} className="h-28 animate-pulse rounded-2xl border border-slate-800 bg-slate-900 p-5"><div className="h-3 w-20 rounded bg-slate-800"/><div className="mt-5 h-7 w-14 rounded bg-slate-800"/><div className="mt-3 h-2 w-full rounded bg-slate-800"/></div>)}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!user) {
     if (window.location.hash === '#admin') {
       return (
@@ -275,10 +326,11 @@ function App() {
               <p className="mt-3 text-sm leading-6 text-slate-300">Authorized administrators only. Sign in to open the control center.</p>
             </div>
             <form onSubmit={login} className="rounded-3xl border border-white/10 bg-white/[0.06] p-6 shadow-2xl shadow-black/20 sm:p-8">
+              {!isOnline && <div className="mb-4 flex items-center gap-2 rounded-xl border border-amber-400/20 bg-amber-400/10 p-3 text-sm text-amber-200"><WifiOff size={16} /> You are offline. Sign-in requests may fail.</div>}
               {loginError && <div className="mb-5 rounded-xl border border-rose-400/20 bg-rose-400/10 p-3 text-sm text-rose-200">{loginError}</div>}
               <label className="block text-sm font-medium text-slate-200">Administrator ID<input name="studyflowId" type="text" required autoComplete="username" className="mt-2 w-full rounded-xl border border-white/10 bg-[#0a1224] p-3.5 text-white outline-none transition focus:border-cyan-300" placeholder="Enter administrator ID" /></label>
               <label className="mt-5 block text-sm font-medium text-slate-200">Password<input name="password" type="password" required autoComplete="current-password" className="mt-2 w-full rounded-xl border border-white/10 bg-[#0a1224] p-3.5 text-white outline-none transition focus:border-cyan-300" placeholder="Enter administrator password" /></label>
-              <button type="submit" className="mt-6 w-full rounded-xl bg-cyan-300 py-3.5 font-bold text-[#101a31] transition hover:bg-cyan-200">Access admin console</button>
+              <button type="submit" disabled={loginBusy || !isOnline} className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-300 py-3.5 font-bold text-[#101a31] transition hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-60">{loginBusy && <LoaderCircle size={18} className="animate-spin" />}{loginBusy ? 'Signing in…' : 'Access admin console'}</button>
               <p className="mt-5 text-center text-xs leading-5 text-slate-400">This sign-in is separate from the student and teacher portal.</p>
             </form>
             <button onClick={() => { window.location.hash = ''; }} className="mt-6 flex w-full items-center justify-center gap-2 text-sm text-slate-300 transition hover:text-white"><ChevronRight size={16} className="rotate-180" /> Return to StudyFlow home</button>
@@ -351,12 +403,13 @@ function App() {
                     <button type="button" onClick={() => { setLoginMode('login'); setLoginError(''); }} className="mt-3 font-semibold underline">Continue to login</button>
                   </div>
                 )}
+                {!isOnline && <div className="mb-4 flex items-center gap-2 rounded-xl border border-amber-400/20 bg-amber-400/10 p-3 text-sm text-amber-200"><WifiOff size={16} /> You are offline. Reconnect before continuing.</div>}
                 {loginError && <div className="mb-4 rounded-xl bg-red-500/10 p-3 text-sm text-red-300">{loginError}</div>}
                 {loginMode === 'signup' && loginRole !== 'admin' && <label className="mb-4 block text-sm text-slate-400">Full name<input name="name" type="text" required autoComplete="name" className="mt-2 w-full rounded-xl bg-slate-800 p-3 outline-none" placeholder="Enter your full name" /></label>}
                 {loginMode === 'login' && <label className="text-sm text-slate-400">StudyFlow ID<input name="studyflowId" type="text" required autoComplete="username" className="mt-2 w-full rounded-xl bg-slate-800 p-3 uppercase outline-none" placeholder={loginRole === 'student' ? 'STU-001' : loginRole === 'teacher' ? 'TCH-001' : 'ADM-001'} /></label>}
                 <label className="mt-4 block text-sm text-slate-400">Password<input name="password" type="password" required autoComplete={loginMode === 'signup' ? 'new-password' : 'current-password'} className="mt-2 w-full rounded-xl bg-slate-800 p-3 outline-none" placeholder={loginMode === 'signup' ? 'Create a password (6+ characters)' : 'Enter password'} minLength={loginMode === 'signup' ? 6 : undefined} /></label>
                 {loginMode === 'signup' && <label className="mt-4 block text-sm text-slate-400">Confirm password<input name="confirmPassword" type="password" required autoComplete="new-password" className="mt-2 w-full rounded-xl bg-slate-800 p-3 outline-none" placeholder="Re-enter your password" minLength={6} /></label>}
-                <button onClick={() => setRegisteredAccount(null)} className="mt-6 w-full rounded-xl bg-indigo-500 py-3 font-semibold">{loginMode === 'signup' ? 'Create Account' : 'Login'}</button>
+                <button type="submit" disabled={loginBusy || !isOnline} onClick={() => setRegisteredAccount(null)} className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-500 py-3 font-semibold disabled:cursor-not-allowed disabled:opacity-60">{loginBusy && <LoaderCircle size={18} className="animate-spin" />}{loginBusy ? (loginMode === 'signup' ? 'Creating account…' : 'Signing in…') : (loginMode === 'signup' ? 'Create Account' : 'Login')}</button>
                 {loginRole !== 'admin' && <p className="mt-4 text-center text-sm text-slate-400">{loginMode === 'login' ? "Don't have an account? " : 'Already have an account? '}<button type="button" onClick={() => { setLoginMode(loginMode === 'login' ? 'signup' : 'login'); setLoginError(''); setRegisteredAccount(null); }} className="font-semibold text-indigo-300 underline">{loginMode === 'login' ? 'Sign Up' : 'Login'}</button></p>}
                 <p className="mt-3 text-center text-xs text-slate-500">No email needed. Your StudyFlow ID and password are your login details.</p>
               </form>
@@ -375,6 +428,7 @@ function App() {
 
   return (
     <div className={user.role === 'admin' ? 'admin-portal min-h-screen bg-[#f4f7fb] text-slate-900' : 'min-h-screen bg-slate-950 text-slate-100'}>
+      {!isOnline && <div className="fixed inset-x-0 top-0 z-[100] flex items-center justify-center gap-2 bg-amber-500 px-4 py-2 text-center text-sm font-semibold text-slate-950 shadow-lg"><WifiOff size={16} /> Connection lost. Changes may not save until you reconnect.</div>}
       <aside
         className={`fixed inset-y-0 left-0 z-50 w-64 p-5 transition-transform md:translate-x-0 ${user.role === 'admin' ? 'border-r border-white/10 bg-[#111c35] text-white shadow-2xl shadow-slate-900/10' : 'border-r border-slate-800 bg-slate-900'} ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}
       >
@@ -460,9 +514,10 @@ function App() {
                 <AlertCircle size={17} />
                 {error}
               </span>
-              <button onClick={() => setError('')}>
-                <X size={16} />
-              </button>
+              <div className="flex items-center gap-3">
+                {(loadTimedOut || error.includes('load StudyFlow data') || !isOnline) && <button onClick={() => load().catch((err: any) => setError(err?.message || 'Unable to load StudyFlow data.'))} disabled={!isOnline || loading} className="flex items-center gap-1 font-semibold text-red-200 disabled:opacity-50"><RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Retry</button>}
+                <button onClick={() => setError('')} aria-label="Dismiss error"><X size={16} /></button>
+              </div>
             </div>
           )}
           {notice && (
