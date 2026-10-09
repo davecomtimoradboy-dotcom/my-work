@@ -1,86 +1,112 @@
 [
   {
-    "name": "Create a program and course",
+    "name": "Admin uses a separate access page and can open user management",
     "sanity": true,
     "viewport": "desktop",
     "covers": [
-      "program create",
-      "course create",
-      "program-course relationship",
-      "database persistence"
+      "separate #admin access route",
+      "admin login",
+      "ADM-001 authentication",
+      "separate admin control center design",
+      "admin dashboard shortcuts",
+      "user management",
+      "public portal does not expose admin login"
     ],
-    "description": "Verifies a student can create a program and add a course under that program.",
+    "description": "Verifies the public home offers only Student Login and Teacher Login, while #admin has a dedicated sign-in and control center.",
     "steps": [
-      "Open Programs and add 'Software Engineering'",
-      "Open Courses and add 'Web Development' under 'Software Engineering'",
-      "Refresh the page"
+      "Open the StudyFlow home page and verify only Student Login and Teacher Login are displayed",
+      "Navigate directly to the StudyFlow URL with #admin at the end",
+      "Enter ADM-001 and the configured administrator password",
+      "Verify the Admin Control Center overview is visible",
+      "Open Manage Users"
     ],
-    "expected": "Software Engineering and Web Development remain visible, and the course shows Software Engineering as its program."
+    "expected": "Admin access is available through the separate #admin entry point and the registered account directory is visible after login."
   },
   {
-    "name": "Submit real assignment code",
+    "name": "Student signup generates a StudyFlow ID",
     "viewport": "desktop",
     "covers": [
-      "assignment code submission",
-      "programming language selection",
-      "submission persistence",
-      "assignment completion"
+      "student registration",
+      "automatic STU ID generation",
+      "POST /api/auth/register"
     ],
-    "description": "Verifies a student can enter real code for an assignment, save it, and see the submission after reload.",
+    "description": "Verifies student signup generates an ID without allowing admin self-registration.",
     "steps": [
-      "Create an assignment named 'PHP Assignment'",
-      "Open Assignments and click 'Submit Assignment'",
-      "Select PHP and enter code such as '<?php echo 1; ?>'",
-      "Click 'Save & Submit Code'",
-      "Refresh the page"
+      "Choose Student Login",
+      "Choose Sign Up",
+      "Enter name and matching password twice",
+      "Submit registration"
     ],
-    "expected": "The assignment shows that code was submitted with PHP, and opening the submission shows the saved code."
+    "expected": "A new STU-### ID is displayed and admin signup is not offered."
   },
   {
-    "name": "Use a course for an assignment and exam",
+    "name": "Teacher signup generates a StudyFlow ID",
     "viewport": "desktop",
     "covers": [
-      "assignment course selection",
-      "exam course selection",
-      "database persistence"
+      "teacher registration",
+      "automatic TCH ID generation"
     ],
-    "description": "Verifies assignments and exams can be linked to an existing course.",
+    "description": "Verifies teacher signup generates a teacher ID.",
     "steps": [
-      "Add a course named 'PHP'",
-      "Add an assignment named 'PHP Assignment' and select PHP",
-      "Add an exam named 'PHP Exam' and select PHP"
+      "Choose Teacher Login",
+      "Choose Sign Up",
+      "Enter name and matching password twice",
+      "Submit registration"
     ],
-    "expected": "Both the assignment and exam show PHP as their course."
+    "expected": "A new TCH-### ID is displayed."
   },
   {
-    "name": "Mark an assignment complete",
+    "name": "New student can log in with generated ID",
     "viewport": "desktop",
     "covers": [
-      "assignment completion",
-      "database update",
-      "completion persistence"
+      "StudyFlow ID authentication",
+      "registration-to-login flow"
     ],
-    "description": "Verifies clicking an assignment checkbox marks it complete and keeps the completed state after refresh.",
+    "description": "Verifies the generated student ID and password work at login.",
     "steps": [
-      "Create an assignment named 'PHP Assignment'",
-      "Open Assignments and click its checkbox",
-      "Refresh the page"
+      "Register a student",
+      "Copy the generated ID",
+      "Return to Student Login",
+      "Log in using the ID and chosen password"
     ],
-    "expected": "The assignment title is crossed out and it remains completed after refresh."
+    "expected": "The student reaches the dashboard."
   },
   {
-    "name": "Reject incomplete program",
+    "name": "Mismatched signup passwords are rejected",
     "viewport": "mobile",
     "covers": [
-      "program validation",
-      "mobile form behavior"
+      "registration validation",
+      "password confirmation guardrail"
     ],
-    "description": "Verifies a program cannot be saved without a name.",
+    "description": "Verifies mismatched passwords do not create an account.",
     "steps": [
-      "Open Programs",
-      "Open the Add program form",
-      "Submit with the name empty"
+      "Open Student Sign Up",
+      "Enter a name and password",
+      "Enter a different confirmation password",
+      "Submit"
     ],
-    "expected": "A validation message appears and no blank program is created."
+    "expected": "A validation message appears and no account is created."
+  },
+  {
+    "name": "Teacher enters marks and admin publishes student results",
+    "viewport": "desktop",
+    "covers": [
+      "teacher result entry",
+      "CA and exam score validation",
+      "automatic total and letter grade",
+      "draft result persistence",
+      "administrator publication",
+      "student results portal"
+    ],
+    "description": "Verifies marks are stored as a draft and only become visible to students after admin publication.",
+    "steps": [
+      "Log in as a teacher",
+      "Open Student Results",
+      "Select a student and course, enter CA and exam marks, semester, year and assessment name",
+      "Save result draft",
+      "Log in as administrator and publish the draft",
+      "Log in as the selected student and open My Results"
+    ],
+    "expected": "The result total and grade are calculated, remains a draft until published, and is visible in My Results only after publication."
   }
 ]
