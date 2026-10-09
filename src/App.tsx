@@ -167,6 +167,7 @@ function App() {
         role: loginRole,
       });
       if (result.data.user?.role !== loginRole) throw new Error('This account is not authorized for this portal.');
+      setInitialLoading(true);
       setUser(result.data.user);
       localStorage.setItem('studyflow_user', JSON.stringify(result.data.user));
       setLoginRole(null);
