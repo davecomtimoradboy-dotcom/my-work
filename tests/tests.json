@@ -128,5 +128,23 @@
       "Verify the offline banner appears and sign-in actions are disabled"
     ],
     "expected": "StudyFlow shows progress while waiting, communicates timeout/offline problems clearly, and offers a retry after connectivity returns."
+  },
+  {
+    "name": "Admin logout returns to the normal StudyFlow home page",
+    "viewport": "desktop",
+    "covers": [
+      "admin logout",
+      "clear #admin route on logout",
+      "return to student and teacher portal"
+    ],
+    "description": "Verifies that logging out from the admin portal does not leave the browser on the admin-only URL route.",
+    "steps": [
+      "Open StudyFlow using the #admin route",
+      "Sign in as an administrator",
+      "Click Log Out",
+      "Verify the URL no longer ends in #admin",
+      "Verify the Student Login and Teacher Login home page is displayed"
+    ],
+    "expected": "Admin logout clears the admin-only hash and returns the user to the regular StudyFlow home page."
   }
 ]

@@ -196,9 +196,16 @@ function App() {
 
   function logout() {
     localStorage.removeItem('studyflow_user');
+    // Leave the admin-only hash route when logging out, otherwise the home page
+    // immediately renders the admin login screen again.
+    if (window.location.hash === '#admin') {
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
     setUser(null);
     setLoginRole(null);
     setRegisteredAccount(null);
+    setLoginError('');
+    setActive('dashboard');
   }
 
   async function save(e: React.FormEvent<HTMLFormElement>) {
